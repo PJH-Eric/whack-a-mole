@@ -78,6 +78,23 @@ async function main() {
     if (customDialog) await page.click('#b-confirm-ok');
     await page.waitForFunction(() => document.querySelector('#s-home').classList.contains('active'), null, { timeout: 500 });
     ok(await page.$eval('#s-home', (element) => element.classList.contains('active')), '按下確認後立即回到主選單');
+    /* 單機打到一半離開也要問一句，不然一個誤觸就沒了 */
+    await page.click('#b-solo');
+    await page.waitForSelector('#s-solo.active', { timeout: 3000 });
+    await page.click('#b-solo-start');
+    await page.waitForFunction(() => window.WAM.S.match && window.WAM.S.match.phase === 'playing', null, { timeout: 8000 });
+    await page.click('#b-quit');
+    const soloAsk = await page.$eval('#confirm-modal', (element) => !element.hidden).catch(() => false);
+    ok(soloAsk, '單機打到一半離開也會先確認');
+    if (soloAsk) {
+      await page.click('#b-confirm-cancel');
+      ok(await page.$eval('#s-game', (element) => element.classList.contains('active')), '按取消會留在對局裡');
+      await page.click('#b-quit');
+      await page.click('#b-confirm-ok');
+    }
+    await page.waitForFunction(() => document.querySelector('#s-home').classList.contains('active'), null, { timeout: 1000 });
+    ok(await page.$eval('#s-home', (element) => element.classList.contains('active')), '單機確認後回到主選單');
+
     ok(errors.length === 0, '離開流程沒有主控台錯誤', errors.slice(0, 3).join(' | '));
   } finally {
     if (context) await context.close().catch(() => {});
