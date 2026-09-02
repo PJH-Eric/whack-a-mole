@@ -182,7 +182,9 @@ GitHub Pages 只能放靜態檔案，**跑不動 `server.js`**。所以架構是
 
 ### 步驟 2：把前端放上 GitHub Pages
 
-1. GitHub repo → **Settings → Pages → Source** 選 **GitHub Actions**。
+1. Pages 本身不用手動開 —— workflow 裡的 `configure-pages` 帶了 `enablement: true`，
+   第一次跑就會自己把 Pages 開起來、來源設成 **GitHub Actions**。
+   （如果組織政策擋掉自動開啟，就手動進 **Settings → Pages → Source** 選 **GitHub Actions**。）
 2. GitHub repo → **Settings → Secrets and variables → Actions → Variables →
    New repository variable**：
    - 名稱：`GAME_SERVER_URL`

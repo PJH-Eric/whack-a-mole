@@ -68,7 +68,11 @@ jobs:
           touch public/.nojekyll
           cp public/index.html public/404.html   # 直接開子路徑時也回到遊戲
 
+      # enablement: true 讓這一步在 repo 還沒開 Pages 時自己去開（並把來源設成
+      # GitHub Actions），省掉手動進 Settings 的步驟。沒開就跑會直接 404 失敗。
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
