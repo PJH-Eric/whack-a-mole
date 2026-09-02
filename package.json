@@ -1,0 +1,28 @@
+{
+  "name": "whack-a-mole",
+  "version": "1.0.0",
+  "description": "打地鼠大亂鬥 - 可愛風多樣地鼠打擊遊戲（11 種地鼠、好人壞人正負分、單機三段 AI、最多 5 人共用盤面搶打的線上對戰、觀戰、邀請連結、聊天室與即時統計）",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/verify.js",
+    "test:online": "node scripts/online-check.js",
+    "test:browser": "node scripts/browser-check.js",
+    "verify": "node tests/verify.js && node scripts/online-check.js && node scripts/browser-check.js",
+    "inject": "node scripts/inject-server-url.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0",
+    "socket.io-client": "^4.8.1"
+  },
+  "license": "MIT",
+  "private": true
+}
