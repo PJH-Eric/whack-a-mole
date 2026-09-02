@@ -737,6 +737,23 @@
     }).catch(function () { return false; });
   }
 
+  /* 邀請連結的進場流程。自動進場與「加入房間」按鈕共用同一份，
+     這樣先取名字再進來也帶得到邀請 token（私人房間非它不可）。 */
+  function enterByIntent() {
+    var it = S.joinIntent;
+    if (!it) return Promise.resolve(false);
+    return connect().then(function () {
+      if (!it.invite) return joinRoom(it.room);
+      return new Promise(function (resolve) {
+        Online.send('invite:check', { code: it.room, token: it.invite }, function (res) {
+          if (!res || !res.ok) { toast((res && res.error) || '這個邀請連結不能用了。', 4200); return resolve(false); }
+          if (res.note) toast(res.note, 3800);
+          joinRoom(it.room, it.invite, res.role).then(resolve);
+        });
+      });
+    }).catch(function () { return false; });
+  }
+
   function createRoom() {
     return connect().then(function () {
       Online.send('room:create', {
@@ -989,6 +1006,8 @@
     $('b-join').addEventListener('click', function () {
       var code = ($('join-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
       if (code.length < 4) return toast('請輸入完整的房號。');
+      /* 從邀請連結進來的話要帶著 token，不然私人房間會被擋在門外 */
+      if (S.joinIntent && S.joinIntent.room === code && S.joinIntent.invite) return enterByIntent();
       joinRoom(code);
     });
     $('join-code').addEventListener('input', function () {
@@ -1185,14 +1204,14 @@
     if (entry.room && Config.isOnlineEnabled()) {
       show('s-lobby');
       $('join-code').value = entry.room;
-      connect().then(function () {
-        if (!entry.invite) return joinRoom(entry.room);
-        Online.send('invite:check', { code: entry.room, token: entry.invite }, function (res) {
-          if (!res || !res.ok) return toast((res && res.error) || '這個邀請連結不能用了。', 4200);
-          if (res.note) toast(res.note, 3800);
-          joinRoom(entry.room, entry.invite, res.role);
-        });
-      }).catch(function () {});
+      S.joinIntent = { room: entry.room, invite: entry.invite || null };
+      if (entry.invite || !Store.nick()) {
+        /* 邀請連結一定先讓人確認／修改暱稱，不能用裝置上的舊名稱直接進房。 */
+        toast('請先確認或設定玩家暱稱，再按「加入房間」就進去了。', 4600);
+        try { $('lobby-nick').focus(); } catch (e) {}
+      } else {
+        enterByIntent();
+      }
     }
 
     /* 分頁切回來時補一次同步，避免長時間背景後畫面對不上 */

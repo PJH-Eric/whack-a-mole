@@ -672,6 +672,9 @@ async function main() {
     await A.page.click('#b-invite-done');
 
     await C.page.goto(inviteUrl, { waitUntil: 'networkidle' });
+    await C.page.waitForSelector('#s-lobby.active', { timeout: 5000 });
+    await C.page.fill('#lobby-nick', '觀眾小美');
+    await C.page.click('#b-join');
     await C.page.waitForSelector('#ov-wait:not([hidden])', { timeout: 10000 });
     ok(await C.page.evaluate(() => window.WAM.S.view.you.role) === 'spectator', '邀請連結進來的是觀戰身分');
 

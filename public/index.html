@@ -89,8 +89,9 @@
         <button class="btn3d small" data-color="sky" id="b-reconnect" hidden>重新連線</button>
       </div>
 
-      <h3 class="lbl">你的名字</h3>
-      <input class="field" id="lobby-nick" type="text" maxlength="12" placeholder="打地鼠高手" autocomplete="nickname">
+      <h3 class="lbl" id="lobby-nick-label">玩家暱稱</h3>
+      <input class="field" id="lobby-nick" type="text" maxlength="12" placeholder="打地鼠高手"
+             autocomplete="nickname" aria-labelledby="lobby-nick-label">
 
       <div class="lobby-grid">
         <div class="lobby-box">
