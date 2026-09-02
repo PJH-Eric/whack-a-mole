@@ -307,7 +307,8 @@
     S.mode = 'solo';
     S.clockOffset = 0;
     S.view = null;
-    S.solo.state = Rules.createMatch({ seed: seed, players: roster, now: now, board: Store.board() });
+    /* 同一個難度同時決定地鼠節奏與電腦對手強弱 —— 玩家只要選一次 */
+    S.solo.state = Rules.createMatch({ seed: seed, players: roster, now: now, board: Store.board(), pace: level, roundMs: Rules.roundMsOf(Store.roundSec()) });
     S.solo.rng = RNG.createRng('spawn:solo:' + seed);
     S.match = Rules.snapshot(S.solo.state, now);
     S.lastStage = 0; S.lastCombo = 0; S.warned = false;
@@ -357,6 +358,7 @@
    * ============================================================ */
 
   function enterGameScreen() {
+    document.body.classList.remove('playing');
     S.soloResultShown = false;
     if (S.match) Board.setGrid(S.match);
     $('ov-result').hidden = true;
@@ -373,6 +375,7 @@
   }
 
   function leaveGame() {
+    document.body.classList.remove('playing');
     stopLoop();
     if (S.mode === 'online' && S.view) Online.send('room:leave', {});
     S.mode = null; S.solo.state = null; S.match = null; S.view = null;
@@ -389,7 +392,7 @@
       else pruneExpired(S.match, now);
       if (S.match) Board.draw(S.match, now);
       /* DOM 更新壓在 ~12fps，省電也避免手機掉幀 */
-      if (now - S.lastPaint > 80) { S.lastPaint = now; paintHud(); paintSummary(); }
+      if (now - S.lastPaint > 80) { S.lastPaint = now; paintHud(); paintSummary(); paintPlayingFlag(); }
     };
     S.raf = w.requestAnimationFrame(tick);
   }
@@ -550,6 +553,28 @@
     }
 
     /* 盤面大小只有房主能改，其他人看得到目前設定（寫在下面的說明裡） */
+    $('round-manage').hidden = !v.you.can.setRound;
+    if (v.you.can.setRound) {
+      $('round-pick').innerHTML = (v.rounds || []).map(function (sec) {
+        var on = sec === v.roundSec;
+        return '<button class="btn3d" data-color="' + (on ? 'mint' : 'cream') + '"'
+          + ' data-setround="' + sec + '" role="radio" aria-checked="' + on + '">'
+          + sec + ' 秒</button>';
+      }).join('');
+      SvgUI.decorateAll($('round-pick'));
+    }
+
+    $('pace-manage').hidden = !v.you.can.setPace;
+    if (v.you.can.setPace) {
+      $('pace-pick').innerHTML = (v.paces || []).map(function (P) {
+        var on = P.key === v.pace;
+        return '<button class="btn3d" data-color="' + (on ? 'mint' : 'cream') + '"'
+          + ' data-setpace="' + esc(P.key) + '" role="radio" aria-checked="' + on + '"'
+          + ' title="' + esc(P.blurb) + '">' + P.emoji + ' ' + esc(P.label) + '</button>';
+      }).join('');
+      SvgUI.decorateAll($('pace-pick'));
+    }
+
     /* 還沒開打時就先把空盤面換成房主選的尺寸，改了立刻看得到 */
     Board.setGrid(Rules.boardOf(v.board));
     $('board-manage').hidden = !v.you.can.setBoard;
@@ -565,7 +590,7 @@
 
     var note = [];
     var bd = Rules.boardOf(v.board);
-    note.push('盤面 ' + bd.label + '（' + bd.holes + ' 個地洞）。');
+    note.push('一局 ' + v.roundSec + ' 秒・難度「' + Rules.paceOf(v.pace).label + '」・盤面 ' + bd.label + '（' + bd.holes + ' 個地洞）。');
     note.push('座位 ' + (v.seats - v.seatsFree) + '/' + v.seats + '，最多 ' + v.seats + ' 人共用同一組地洞。');
     if (v.you.role === 'spectator') note.push('你目前是觀戰身分。');
     if (v.you.startBlockedBy) note.push(v.you.startBlockedBy + '。');
@@ -854,6 +879,16 @@
     paintHud();
     paintSummary();
     paintUnread();
+    paintPlayingFlag();
+  }
+
+  /* body.playing 只在真的在打的時候成立。準備／倒數／結算都不算 ——
+     鐵鎚游標靠這個旗標，設定和等待畫面用一般游標就好。 */
+  function paintPlayingFlag() {
+    var phase = S.mode === 'online'
+      ? (S.view && S.view.phase)
+      : (S.match && S.match.phase);
+    document.body.classList.toggle('playing', phase === 'playing');
   }
 
   /* ============================================================
@@ -880,7 +915,7 @@
   }
 
   document.addEventListener('click', function (e) {
-    var t = e.target.closest ? e.target.closest('[data-act],[data-back],[data-joincode],[data-addai],[data-rmai],[data-setboard],[data-revoke],[data-copyinv],[data-close-modal],[data-pane]') : null;
+    var t = e.target.closest ? e.target.closest('[data-act],[data-back],[data-joincode],[data-addai],[data-rmai],[data-setboard],[data-setpace],[data-setround],[data-revoke],[data-copyinv],[data-close-modal],[data-pane]') : null;
     if (!t) return;
     if (t.dataset.back) { show(t.dataset.back); Sound.play('click'); return; }
     if (t.dataset.act) { Sound.play('click'); doAction(t.dataset.act); return; }
@@ -889,6 +924,8 @@
     if (t.dataset.addai) { Online.send('room:addAi', { level: t.dataset.addai }); return; }
     if (t.dataset.rmai) { Online.send('room:removeAi', { id: t.dataset.rmai }); return; }
     if (t.dataset.setboard) { Sound.play('tick'); Online.send('room:setBoard', { board: t.dataset.setboard }); return; }
+    if (t.dataset.setpace) { Sound.play('tick'); Online.send('room:setPace', { pace: t.dataset.setpace }); return; }
+    if (t.dataset.setround) { Sound.play('tick'); Online.send('room:setRound', { roundSec: Number(t.dataset.setround) }); return; }
     if (t.dataset.revoke) { Online.send('room:revokeInvite', { token: t.dataset.revoke }); return; }
     if (t.dataset.copyinv) { copyText(Config.inviteUrl(S.view.code, t.dataset.copyinv)); return; }
     if (t.hasAttribute('data-close-modal')) { closeModal(t.closest('.modal').id); }
@@ -997,14 +1034,15 @@
     });
 
     /* 選項卡片（單機難度／對手數量） */
-    ['opt-ai', 'opt-aicount', 'opt-board'].forEach(function (id) {
+    ['opt-ai', 'opt-aicount', 'opt-board', 'opt-round'].forEach(function (id) {
       $(id).addEventListener('click', function (e) {
         var c = e.target.closest('.pickcard');
         if (!c) return;
         els('.pickcard', this).forEach(function (x) { x.setAttribute('aria-checked', String(x === c)); });
         if (id === 'opt-ai') Store.aiLevel(c.dataset.v);
         else if (id === 'opt-aicount') Store.aiCount(c.dataset.v);
-        else Store.board(c.dataset.v);
+        else if (id === 'opt-board') Store.board(c.dataset.v);
+        else Store.roundSec(c.dataset.v);
         Sound.play('tick');
       });
     });
@@ -1025,6 +1063,13 @@
     els('#opt-aicount .pickcard').forEach(function (c) {
       c.setAttribute('aria-checked', String(c.dataset.v === cnt));
     });
+
+    var rs = Rules.roundSecOf(Store.roundSec());
+    $('opt-round').innerHTML = Rules.ROUND_SECONDS.map(function (sec) {
+      return '<button class="pickcard" type="button" role="radio" data-v="' + sec + '"'
+        + ' aria-checked="' + (sec === rs) + '"><b>' + sec + ' 秒</b><span>'
+        + (sec === 60 ? '快一場' : (sec === 75 ? '中等' : '完整一局')) + '</span></button>';
+    }).join('');
 
     var bd = Rules.boardOf(Store.board()).key;
     $('opt-board').innerHTML = Rules.BOARDS.map(function (b) {

@@ -194,6 +194,7 @@
           rec.drawnKey = '';
           rec.slot.style.transform = 'translateY(105%)';
           rec.slot.classList.remove('up');
+          delete rec.slot.dataset.mole;
           rec.badge.textContent = '';
           rec.badge.className = 'mole-badge';
           rec.el.setAttribute('aria-label', '第 ' + (i + 1) + ' 號地洞，空的');
@@ -207,6 +208,8 @@
         rec.drawnKey = key;
         rec.svg.innerHTML = SvgUI.moleArt(m.type, m.hpLeft);
         rec.slot.className = 'mole-slot up side-' + t.side + ' type-' + m.type;
+        /* 標上這一隻的 id：同一個洞連續冒兩隻時，外部工具才分得出是兩隻 */
+        rec.slot.dataset.mole = String(m.id);
         rec.badge.className = 'mole-badge on side-' + t.side;
         rec.badge.textContent = (t.points > 0 ? '+' : '') + t.points
           + (t.hp > 1 ? ' ×' + m.hpLeft : '');

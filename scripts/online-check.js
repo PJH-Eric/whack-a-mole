@@ -191,11 +191,11 @@ async function main() {
     ok(clients[1].errors.some((e) => e.code === 'muted'), '被禁言的人不能發言');
   }
 
-  group('房主設定盤面大小');
+  group('房主設定一局長度、難度與盤面');
   {
     const notHost = clients[1];
     notHost.errors.length = 0;
-    notHost.send('room:setBoard', { board: '6x4' });
+    notHost.send('room:setBoard', { board: '6x6' });
     await sleep(220);
     ok(notHost.errors.some((e) => e.code === 'perm'), '非房主不能改盤面大小');
     eq(host.view.board, '4x3', '被擋下來之後盤面沒變');
@@ -208,10 +208,35 @@ async function main() {
     ok(host.view.boards && host.view.boards.length >= 3, '房間投影帶著可選盤面清單');
     ok(host.view.you.can.setBoard, '房主在準備階段可以改盤面');
 
-    host.send('room:setBoard', { board: '6x4' });
-    await until(() => host.view.board === '6x4', 2000, '盤面改成 6x4');
-    eq(host.view.board, '6x4', '房主改得動盤面');
-    eq(notHost.view.board, '6x4', '其他人也同步看到新盤面');
+    host.errors.length = 0;
+    host.send('room:setRound', { roundSec: 45 });
+    await sleep(220);
+    ok(host.errors.some((e) => e.code === 'badround'), '不在清單裡的一局長度被擋下來');
+    ok(host.view.rounds && host.view.rounds.join(',') === '60,75,90', '投影帶著可選長度 60/75/90');
+    ok(host.view.you.can.setRound, '房主在準備階段可以改一局長度');
+    eq(host.view.roundSec, Math.round(Number(process.env.ROUND_MS) / 1000),
+      '房間沿用伺服器設定的一局長度');
+    notHost.errors.length = 0;
+    notHost.send('room:setRound', { roundSec: 90 });
+    await sleep(220);
+    ok(notHost.errors.some((e) => e.code === 'perm'), '非房主不能改一局長度');
+
+    host.errors.length = 0;
+    host.send('room:setPace', { pace: '亂填' });
+    await sleep(220);
+    ok(host.errors.some((e) => e.code === 'badpace'), '不存在的難度被伺服器擋下來');
+    ok(host.view.paces && host.view.paces.length === 4, '房間投影帶著四段難度清單');
+    ok(host.view.you.can.setPace, '房主在準備階段可以改難度');
+    host.send('room:setPace', { pace: 'rookie' });
+    await until(() => host.view.pace === 'rookie', 2000, '難度改成超級新手');
+    eq(notHost.view.pace, 'rookie', '其他人也同步看到新難度');
+    host.send('room:setPace', { pace: 'normal' });
+    await until(() => host.view.pace === 'normal', 2000, '難度改回普通');
+
+    host.send('room:setBoard', { board: '6x6' });
+    await until(() => host.view.board === '6x6', 2000, '盤面改成 6x6');
+    eq(host.view.board, '6x6', '房主改得動盤面');
+    eq(notHost.view.board, '6x6', '其他人也同步看到新盤面');
     ok(notHost.view.chat.some((m) => (m.text || '').indexOf('6') >= 0 || (m.text || '').indexOf('盤面') >= 0),
       '改盤面會在聊天室留下系統訊息');
   }
@@ -242,13 +267,24 @@ async function main() {
     await until(() => host.view.phase === 'playing', 4000, '倒數結束');
     eq(host.view.phase, 'playing', '倒數結束後開打');
     ok(host.view.match && host.view.match.seed, '對局有種子，可重播');
-    eq(host.view.match.holes, 24, '開局用的是房主選的 24 洞盤面');
-    eq(host.view.match.board, '6x4', '快照帶著盤面 key');
+    eq(host.view.match.holes, 36, '開局用的是房主選的 36 洞盤面');
+    eq(host.view.match.board, '6x6', '快照帶著盤面 key');
+    eq(host.view.match.pace, 'normal', '快照帶著難度');
+    eq(host.view.match.endAt - host.view.match.startAt, Number(process.env.ROUND_MS),
+      '對局用的是房間設定的一局長度');
+    host.errors.length = 0;
+    host.send('room:setRound', { roundSec: 60 });
+    await sleep(220);
+    ok(host.errors.some((e) => e.code === 'phase'), '對局進行中不能改一局長度');
+    host.errors.length = 0;
+    host.send('room:setPace', { pace: 'hard' });
+    await sleep(220);
+    ok(host.errors.some((e) => e.code === 'phase'), '對局進行中不能改難度');
     host.errors.length = 0;
     host.send('room:setBoard', { board: '4x3' });
     await sleep(220);
     ok(host.errors.some((e) => e.code === 'phase'), '對局進行中不能改盤面');
-    eq(host.view.board, '6x4', '進行中盤面保持不變');
+    eq(host.view.board, '6x6', '進行中盤面保持不變');
   }
 
   group('搶打先得分（共用盤面的核心）');
@@ -352,6 +388,10 @@ async function main() {
     host.send('room:reset');
     await until(() => host.view.phase === 'lobby', 3000, '回到大廳');
     eq(host.view.phase, 'lobby', '房主把房間拉回準備階段');
+    host.send('room:setRound', { roundSec: 90 });
+    await until(() => host.view.roundSec === 90, 2000, '一局長度改成 90 秒');
+    eq(host.view.roundSec, 90, '結算後房主改得動一局長度');
+    eq(clients[1].view.roundSec, 90, '其他人也同步看到新長度');
     eq(host.view.you.ready, false, '所有人的準備狀態重置');
   }
 
@@ -374,6 +414,40 @@ async function main() {
     await until(() => clients[1].view && clients[1].view.hostId === clients[1].clientId
       || (clients[1].view && clients[1].view.hostId !== host.clientId), 3000, '房主轉移');
     ok(clients[1].view.hostId !== host.clientId, '房主身分轉移給其他人');
+  }
+
+  group('沒人的房間自動關閉');
+  {
+    /* 開一間新房，讓最後一個人離開，房間要立刻消失（不是等回收） */
+    const solo = makeClient("自己一個", "solo-leaver");
+    await solo.ready;
+    const made = await solo.emit("room:create", { name: "自己一個" });
+    ok(made.ok, '開了一間新房');
+    const code = made.code;
+
+    const lobby = makeClient("看大廳的", "lobby-watcher");
+    await lobby.ready;
+    const before = await new Promise((res) => {
+      lobby.sock.once('lobby:rooms', res);
+      lobby.send('lobby:subscribe');
+    });
+    ok(before.rooms.some((r) => r.code === code), '新房出現在大廳列表');
+
+    solo.send('room:leave');
+    await until(() => solo.left, 3000, '最後一個人離開');
+    await sleep(400);
+    const after = await new Promise((res) => {
+      lobby.sock.once('lobby:rooms', res);
+      lobby.send('lobby:subscribe');
+    });
+    ok(!after.rooms.some((r) => r.code === code), '最後一個人走了，房間立刻從大廳消失');
+
+    /* 房號也真的查不到了：拿它加入應該失敗 */
+    const rejoin = await lobby.emit("room:join", { code, name: "路人" });
+    ok(!rejoin.ok, '關掉的房號加不進去', JSON.stringify(rejoin));
+
+    await lobby.close();
+    await solo.close();
   }
 
   for (const c of clients) await c.close();

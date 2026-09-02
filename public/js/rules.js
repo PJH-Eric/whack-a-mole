@@ -27,23 +27,52 @@
   /* 可以選的盤面大小。直向裝置會把 cols/rows 對調顯示，那純粹是排版，
    * 地洞的編號不會變，所以規則、AI、重播都不受影響。 */
   var BOARDS = [
+    { key: '3x3', cols: 3, rows: 3, label: '3 × 3', note: '9 洞・最小' },
     { key: '4x3', cols: 4, rows: 3, label: '4 × 3', note: '12 洞・標準' },
-    { key: '5x3', cols: 5, rows: 3, label: '5 × 3', note: '15 洞・寬一點' },
-    { key: '5x4', cols: 5, rows: 4, label: '5 × 4', note: '20 洞・熱鬧' },
-    { key: '6x4', cols: 6, rows: 4, label: '6 × 4', note: '24 洞・混亂' }
+    { key: '4x4', cols: 4, rows: 4, label: '4 × 4', note: '16 洞' },
+    { key: '5x4', cols: 5, rows: 4, label: '5 × 4', note: '20 洞' },
+    { key: '5x5', cols: 5, rows: 5, label: '5 × 5', note: '25 洞・熱鬧' },
+    { key: '6x6', cols: 6, rows: 6, label: '6 × 6', note: '36 洞・混亂' }
   ];
   for (var bi = 0; bi < BOARDS.length; bi++) BOARDS[bi].holes = BOARDS[bi].cols * BOARDS[bi].rows;
-  var DEFAULT_BOARD = BOARDS[0].key;
+  /* 明確寫死，不要用 BOARDS[0] —— 清單順序改動不該悄悄換掉預設盤面 */
+  var DEFAULT_BOARD = '4x3';
 
   /** 盤面 key → 盤面設定。不認得的 key 一律回到預設，不丟例外。 */
   function boardOf(key) {
-    for (var i = 0; i < BOARDS.length; i++) if (BOARDS[i].key === key) return BOARDS[i];
-    return BOARDS[0];
+    var i, fallback = null;
+    for (i = 0; i < BOARDS.length; i++) {
+      if (BOARDS[i].key === key) return BOARDS[i];
+      if (BOARDS[i].key === DEFAULT_BOARD) fallback = BOARDS[i];
+    }
+    return fallback || BOARDS[0];
   }
 
   /* 一局長度與開賽倒數（毫秒）。伺服器可用環境變數覆蓋。 */
-  var ROUND_MS = 90000;
+  var ROUND_MS = 60000;
   var COUNTDOWN_MS = 3000;
+
+  /* 可以選的一局長度（秒）。階段切點是按比例算的（見 stageAt），
+     所以換長度不會讓第 3 階段永遠跑不到。 */
+  var ROUND_SECONDS = [60, 75, 90];
+  var DEFAULT_ROUND_SEC = 60;
+
+  /** 秒數 → 毫秒。不在清單裡的一律回到預設，不丟例外。 */
+  function roundMsOf(sec) {
+    var n = Math.round(Number(sec));
+    for (var i = 0; i < ROUND_SECONDS.length; i++) if (ROUND_SECONDS[i] === n) return n * 1000;
+    return DEFAULT_ROUND_SEC * 1000;
+  }
+
+  /**
+   * 毫秒 → 秒數，純粹給 UI 顯示用，不做收斂 ——
+   * 伺服器可以用環境變數開一個 14 秒的房間（測試就是這樣跑的），
+   * 那時候要照實顯示 14，只是選單上不會有任何一格被標成選中。
+   */
+  function roundSecOf(ms) {
+    var n = Math.round(Number(ms) / 1000);
+    return n > 0 ? n : DEFAULT_ROUND_SEC;
+  }
 
   /* 地鼠冒出／縮回的動畫時間，命中判定要把它算進去 */
   var RISE_MS = 170;
@@ -135,32 +164,79 @@
 
   /* ------------------------------------------------------------ 階段節奏 */
 
+  /* 難度：管的是「地鼠冒多快、停多久、同時幾隻」。
+   *
+   * 以前難度只換電腦對手的強弱，地鼠的節奏三段都寫死，所以選「簡單」
+   * 地鼠一樣咻一下就縮回去。現在難度同時決定節奏：
+   *   upScale     停留時間的倍率（愈大＝停愈久＝愈好敲）
+   *   spawnScale  冒出間隔的倍率（愈大＝冒得愈慢）
+   *   maxUpDelta  同時在場的地鼠數增減
+   * 普通＝1 倍，是原本調好的基準，所以既有的難度數字完全沒動。
+   */
+  var PACES = {
+    rookie: {
+      key: 'rookie', label: '超級新手', emoji: '🍼',
+      upScale: 2.4, spawnScale: 1.9, maxUpDelta: -1,
+      blurb: '地鼠慢慢冒、停很久，看清楚是好人壞人再敲也來得及。'
+    },
+    easy: {
+      key: 'easy', label: '簡單', emoji: '🌱',
+      upScale: 1.6, spawnScale: 1.35, maxUpDelta: 0,
+      blurb: '地鼠停得久一點、冒得慢一點，剛上手玩這個。'
+    },
+    normal: {
+      key: 'normal', label: '普通', emoji: '🔥',
+      upScale: 1, spawnScale: 1, maxUpDelta: 0,
+      blurb: '標準節奏，三階段愈來愈快。'
+    },
+    hard: {
+      key: 'hard', label: '困難', emoji: '⚡',
+      upScale: 0.75, spawnScale: 0.8, maxUpDelta: 1,
+      blurb: '地鼠一下就縮回去，冒得又快又多，手要夠穩。'
+    }
+  };
+  var PACE_ORDER = ['rookie', 'easy', 'normal', 'hard'];
+  var DEFAULT_PACE = 'normal';
+
+  /** 難度 key → 節奏設定。不認得的一律回到普通，不丟例外。 */
+  function paceOf(key) { return PACES[key] || PACES[DEFAULT_PACE]; }
+
+  /* at＝這個階段從一局的幾分之幾開始。用比例而不是寫死的毫秒，
+     一局長度改成 60 或 75 秒時第 3 階段才不會永遠跑不到。 */
   var STAGES = [
-    { no: 1, fromMs: 0, label: '熱身', spawnMs: 900, jitter: 260, maxUp: 3, upScale: 1.25 },
-    { no: 2, fromMs: 30000, label: '加速', spawnMs: 640, jitter: 200, maxUp: 4, upScale: 1.00 },
-    { no: 3, fromMs: 60000, label: '狂亂', spawnMs: 430, jitter: 150, maxUp: 6, upScale: 0.82 }
+    { no: 1, at: 0, label: '熱身', spawnMs: 900, jitter: 260, maxUp: 3, upScale: 1.25 },
+    { no: 2, at: 1 / 3, label: '加速', spawnMs: 640, jitter: 200, maxUp: 4, upScale: 1.00 },
+    { no: 3, at: 2 / 3, label: '狂亂', spawnMs: 430, jitter: 150, maxUp: 6, upScale: 0.82 }
   ];
 
-  /** 依「已經打了幾毫秒」找出目前階段 */
-  function stageAt(elapsedMs) {
+  /**
+   * 依「已經打了幾毫秒」找出目前階段。
+   * @param {number} elapsedMs
+   * @param {number} [roundMs] 這一局多長；省略就用預設長度
+   */
+  function stageAt(elapsedMs, roundMs) {
+    var total = roundMs || ROUND_MS;
     var s = STAGES[0];
-    for (var i = 0; i < STAGES.length; i++) if (elapsedMs >= STAGES[i].fromMs) s = STAGES[i];
+    for (var i = 0; i < STAGES.length; i++) if (elapsedMs >= STAGES[i].at * total) s = STAGES[i];
     return s;
   }
 
   /**
-   * 洞變多的時候節奏要一起放大，不然 24 個洞配 3 隻地鼠整面都是空的。
+   * 洞變多的時候節奏要一起放大，不然 36 個洞配 3 隻地鼠整面都是空的；
    * 同時在場的地鼠數按洞數比例增加，冒出間隔按同一比例縮短。
-   * 在預設的 12 洞盤面上這個函式是恆等的 —— 既有難度與測試完全不受影響。
+   * 難度則決定地鼠停多久、冒多快、同時幾隻。
+   * 12 洞 + 普通難度時這個函式是恆等的 —— 原本調好的基準完全不受影響。
    */
-  function scaleStage(st, holes) {
+  function scaleStage(st, holes, pace) {
     var k = (holes || HOLES) / HOLES;
-    if (k === 1) return st;
+    var P = paceOf(pace);
+    if (k === 1 && P.key === DEFAULT_PACE) return st;
     return {
-      no: st.no, fromMs: st.fromMs, label: st.label, upScale: st.upScale,
-      spawnMs: Math.max(150, Math.round(st.spawnMs / k)),
-      jitter: Math.round(st.jitter / k),
-      maxUp: Math.max(1, Math.round(st.maxUp * k))
+      no: st.no, at: st.at, label: st.label,
+      upScale: st.upScale * P.upScale,
+      spawnMs: Math.max(150, Math.round(st.spawnMs / k * P.spawnScale)),
+      jitter: Math.max(0, Math.round(st.jitter / k * P.spawnScale)),
+      maxUp: Math.max(1, Math.round(st.maxUp * k) + P.maxUpDelta)
     };
   }
 
@@ -266,6 +342,7 @@
     var countdownMs = o.countdownMs === undefined ? COUNTDOWN_MS : o.countdownMs;
     var seed = RNG.normalizeSeed(o.seed) || RNG.randomSeed();
     var board = boardOf(o.board);
+    var pace = paceOf(o.pace);
     var players = {};
     var order = [];
     (o.players || []).slice(0, MAX_PLAYERS).forEach(function (p, i) {
@@ -275,6 +352,7 @@
     return {
       seed: seed,
       board: board.key,
+      pace: pace.key,
       holes: board.holes, cols: board.cols, rows: board.rows,
       createdAt: now,
       startAt: now + countdownMs,
@@ -359,7 +437,7 @@
     while (now >= state.nextSpawnAt && guard < 4) {
       guard += 1;
       var el = elapsed(state, state.nextSpawnAt);
-      var st = scaleStage(stageAt(el), state.holes);
+      var st = scaleStage(stageAt(el, state.roundMs), state.holes, state.pace);
       var gap = st.spawnMs + Math.round(((rng || Math.random)() * 2 - 1) * st.jitter);
       state.nextSpawnAt += Math.max(140, gap);
 
@@ -514,11 +592,11 @@
   /** 給 UI 的一包即時快照（不含任何隱藏資訊，觀戰者也能拿到同一份） */
   function snapshot(state, now) {
     var el = elapsed(state, now);
-    var st = stageAt(el);
+    var st = stageAt(el, state.roundMs);
     return {
       seed: state.seed,
       phase: phaseOf(state, now),
-      board: state.board, cols: state.cols, rows: state.rows, holes: state.holes,
+      board: state.board, pace: state.pace, cols: state.cols, rows: state.rows, holes: state.holes,
       startAt: state.startAt, endAt: state.endAt,
       remainMs: remainMs(state, now),
       countdownMs: Math.max(0, state.startAt - now),
@@ -552,6 +630,9 @@
   return {
     COLS: COLS, ROWS: ROWS, HOLES: HOLES,
     BOARDS: BOARDS, DEFAULT_BOARD: DEFAULT_BOARD, boardOf: boardOf, scaleStage: scaleStage,
+    PACES: PACES, PACE_ORDER: PACE_ORDER, DEFAULT_PACE: DEFAULT_PACE, paceOf: paceOf,
+    ROUND_SECONDS: ROUND_SECONDS, DEFAULT_ROUND_SEC: DEFAULT_ROUND_SEC,
+    roundMsOf: roundMsOf, roundSecOf: roundSecOf,
     ROUND_MS: ROUND_MS, COUNTDOWN_MS: COUNTDOWN_MS,
     RISE_MS: RISE_MS, SINK_MS: SINK_MS,
     COMBO_STEP: COMBO_STEP, COMBO_BONUS: COMBO_BONUS, COMBO_MAX_BONUS: COMBO_MAX_BONUS,

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#F4EEFF">
-<meta name="description" content="打地鼠大亂鬥：11 種地鼠，壞人加分、好人扣分，單機三段電腦難度，最多 5 人共用同一組地洞搶打先得分的線上對戰，支援觀戰、邀請連結、聊天室與即時統計。">
+<meta name="description" content="打地鼠大亂鬥：11 種地鼠，壞人加分、好人扣分，單機四段電腦難度，最多 5 人共用同一組地洞搶打先得分的線上對戰，支援觀戰、邀請連結、聊天室與即時統計。">
 <title>打地鼠大亂鬥</title>
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='4' y='4' width='92' height='92' rx='22' fill='%23FFF6E6'/%3E%3Cellipse cx='50' cy='84' rx='42' ry='16' fill='%23A87D4E'/%3E%3Cellipse cx='50' cy='80' rx='34' ry='11' fill='%233B2A1E'/%3E%3Cellipse cx='50' cy='52' rx='28' ry='26' fill='%23D6AC80' stroke='%234A3B55' stroke-width='5'/%3E%3Cpath d='M28 34 L24 16 L42 26 Z' fill='%23D6AC80' stroke='%234A3B55' stroke-width='5' stroke-linejoin='round'/%3E%3Cpath d='M72 34 L76 16 L58 26 Z' fill='%23D6AC80' stroke='%234A3B55' stroke-width='5' stroke-linejoin='round'/%3E%3Ccircle cx='40' cy='50' r='5' fill='%234A3B55'/%3E%3Ccircle cx='60' cy='50' r='5' fill='%234A3B55'/%3E%3Cellipse cx='50' cy='64' rx='10' ry='7' fill='%23FFF6EC' stroke='%234A3B55' stroke-width='3'/%3E%3C/svg%3E">
@@ -33,7 +33,7 @@
           <button class="btn3d" data-color="lemon" id="b-stats"><span class="ico">🏅</span>我的戰績</button>
         </div>
       </div>
-      <p class="home-note">壞地鼠敲下去加分，好人敲下去扣分。90 秒一局，分三階段愈來愈快。線上模式全部人共用同一組地洞，同一隻地鼠<b>誰先敲到誰得分</b>。</p>
+      <p class="home-note">壞地鼠敲下去加分，好人敲下去扣分。預設 60 秒一局，也可以選 60／75／90 秒，分三階段愈來愈快。線上模式全部人共用同一組地洞，同一隻地鼠<b>誰先敲到誰得分</b>。</p>
     </div>
   </section>
 
@@ -48,8 +48,9 @@
       <h3 class="lbl">你的名字</h3>
       <input class="field" id="solo-nick" type="text" maxlength="12" placeholder="打地鼠高手" autocomplete="nickname">
 
-      <h3 class="lbl">電腦對手難度</h3>
-      <div class="cardpick" id="opt-ai" role="radiogroup" aria-label="選擇電腦難度"></div>
+      <h3 class="lbl">難度</h3>
+      <div class="cardpick" id="opt-ai" role="radiogroup" aria-label="選擇難度"></div>
+      <p class="hint">難度同時決定<b>地鼠冒出來的速度與停留時間</b>，以及電腦對手的強弱。覺得太快就往下選一級。</p>
 
       <h3 class="lbl">要幾個電腦對手？</h3>
       <div class="cardpick tight" id="opt-aicount" role="radiogroup" aria-label="電腦對手數量">
@@ -58,6 +59,9 @@
         <button class="pickcard" data-v="2" type="button" role="radio" aria-checked="true"><b>2</b><span>三人混戰</span></button>
         <button class="pickcard" data-v="4" type="button" role="radio" aria-checked="false"><b>4</b><span>滿場五人</span></button>
       </div>
+
+      <h3 class="lbl">一局多長</h3>
+      <div class="cardpick tight" id="opt-round" role="radiogroup" aria-label="一局長度"></div>
 
       <h3 class="lbl">盤面大小</h3>
       <div class="cardpick tight" id="opt-board" role="radiogroup" aria-label="盤面大小"></div>
@@ -182,6 +186,14 @@
                 <span class="lbl2">電腦對手</span>
                 <div class="ai-add" id="ai-add"></div>
               </div>
+              <div class="ai-manage" id="round-manage" hidden>
+                <span class="lbl2">一局多長</span>
+                <div class="ai-add" id="round-pick" role="radiogroup" aria-label="一局長度"></div>
+              </div>
+              <div class="ai-manage" id="pace-manage" hidden>
+                <span class="lbl2">難度</span>
+                <div class="ai-add" id="pace-pick" role="radiogroup" aria-label="難度"></div>
+              </div>
               <div class="ai-manage" id="board-manage" hidden>
                 <span class="lbl2">盤面大小</span>
                 <div class="ai-add" id="board-pick" role="radiogroup" aria-label="盤面大小"></div>
@@ -222,10 +234,11 @@
 
       <ol class="steps">
         <li><b>敲壞人、放過好人。</b>壞地鼠敲下去加分，好人（小雞、兔子、農夫、貓店長）敲下去<b>扣分</b>，看清楚再下手。</li>
-        <li><b>90 秒一局，分三階段。</b>熱身 → 加速 → 狂亂，地鼠愈冒愈快、停留愈短，稀有的高分地鼠也愈後面才出現。</li>
+        <li><b>預設 60 秒一局，可選 60／75／90 秒，分三階段。</b>熱身 → 加速 → 狂亂，地鼠愈冒愈快、停留愈短，稀有的高分地鼠也愈後面才出現。</li>
         <li><b>連擊有加成。</b>連續敲中壞人每 5 連擊 +10%，最多 +50%；敲到好人連擊歸零。</li>
         <li><b>線上是共用盤面。</b>最多 5 個人看同一組地洞，同一隻地鼠<b>誰先敲到誰得分</b>，慢一步就沒了。</li>
-        <li><b>盤面大小可以調。</b>12 到 24 個地洞，單機在設定裡選、線上由房主決定。洞愈多同時冒出來的地鼠也愈多。</li>
+        <li><b>難度會改變地鼠速度。</b>超級新手／簡單／普通／困難，決定地鼠冒多快、停多久，也決定電腦對手多強。覺得太快就往下選一級。</li>
+        <li><b>盤面大小可以調。</b>9 到 36 個地洞（以正方形為主），單機在設定裡選、線上由房主決定。</li>
         <li><b>敲空不扣分。</b>敲到空地洞只是浪費時間，不會扣分，但會拉低命中率。</li>
       </ol>
 

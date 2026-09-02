@@ -321,12 +321,14 @@ body{
 .hole:focus-visible{outline:3px solid var(--sky-d);outline-offset:2px}
 /* 可愛鐵鎚游標：只在真的有滑鼠的裝置上換掉。觸控裝置沒有游標，換了也看不到，
    而且手指按住時瀏覽器有時會把它畫出來擋住地鼠。--cur-hammer 由 app.js 從
-   SvgUI 產生，槌子的造型只有一份。 */
+   SvgUI 產生，槌子的造型只有一份。
+   body.playing＝真的在打（見 app.js 的 paintPlayingFlag）。設定、房間準備、
+   倒數與結算畫面都維持一般游標，那時候按下去也沒有東西可以敲。 */
 @media (hover:hover) and (pointer:fine){
-  body.hammer-cursor #s-game.active .board-wrap,
-  body.hammer-cursor #s-game.active .hole{cursor:var(--cur-hammer,pointer)}
-  body.hammer-cursor #s-game.active .board-wrap:active,
-  body.hammer-cursor #s-game.active .hole:active{cursor:var(--cur-hammer-hit,pointer)}
+  body.hammer-cursor.playing #s-game.active .board-wrap,
+  body.hammer-cursor.playing #s-game.active .hole{cursor:var(--cur-hammer,pointer)}
+  body.hammer-cursor.playing #s-game.active .board-wrap:active,
+  body.hammer-cursor.playing #s-game.active .hole:active{cursor:var(--cur-hammer-hit,pointer)}
 }
 .hole-back,.hole-front{position:absolute;left:0;bottom:0;width:100%;height:100%;pointer-events:none}
 .hole-front{z-index:3}

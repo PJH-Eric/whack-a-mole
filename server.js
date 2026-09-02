@@ -11,7 +11,7 @@
  *   PORT                 監聽埠（Render 之類的平台會自動注入），預設 3030
  *   HOST                 監聽介面，預設 0.0.0.0
  *   GAME_ALLOWED_ORIGIN  允許連進來的前端來源，逗號分隔；* 代表不限制
- *   ROUND_MS             一局長度（毫秒），預設 90000
+ *   ROUND_MS             新房間的預設一局長度（毫秒），預設 60000；房主可在房間裡改成 60／75／90 秒
  *   COUNTDOWN_MS         開賽倒數（毫秒），預設 3000
  *   AI_SPEED_SCALE       保留給自動化測試調整 AI 節奏（目前 AI 節奏在 ai.js）
  */
@@ -197,6 +197,8 @@ io.on('connection', (socket) => {
       roomName: p.roomName,
       private: !!p.private,
       board: p.board,
+      pace: p.pace,
+      roundMs: p.roundSec ? Rules.roundMsOf(p.roundSec) : ROUND_MS,
       now: now()
     });
     if (!res.ok) { fail(socket, res.error, res.code); if (typeof ack === 'function') ack(res); return; }
@@ -301,6 +303,20 @@ io.on('connection', (socket) => {
     syncRoom(room); syncLobby();
   }));
 
+  socket.on('room:setRound', withRoom((room, p) => {
+    const res = room.setRound(socket.data.clientId, p.roundSec);
+    if (!res.ok) return fail(socket, res.error, res.code);
+    if (res.changed) room.system('一局長度改成 ' + res.sec + ' 秒。', now());
+    syncRoom(room); syncLobby();
+  }));
+
+  socket.on('room:setPace', withRoom((room, p) => {
+    const res = room.setPace(socket.data.clientId, String(p.pace || ''));
+    if (!res.ok) return fail(socket, res.error, res.code);
+    if (res.changed) room.system('難度改成「' + res.label + '」。', now());
+    syncRoom(room); syncLobby();
+  }));
+
   socket.on('room:setBoard', withRoom((room, p) => {
     const res = room.setBoard(socket.data.clientId, String(p.board || ''));
     if (!res.ok) return fail(socket, res.error, res.code);
@@ -309,7 +325,7 @@ io.on('connection', (socket) => {
   }));
 
   socket.on('room:start', withRoom((room) => {
-    const res = room.start(socket.data.clientId, now(), { roundMs: ROUND_MS, countdownMs: COUNTDOWN_MS });
+    const res = room.start(socket.data.clientId, now(), { countdownMs: COUNTDOWN_MS });
     if (!res.ok) return fail(socket, res.error, res.code);
     room.system('準備開打！這一局的地鼠序列種子是 ' + room.seed + '。', now());
     syncRoom(room); syncLobby();
@@ -376,8 +392,10 @@ io.on('connection', (socket) => {
   socket.on('room:leave', withRoom((room) => {
     const res = room.leave(socket.data.clientId, now());
     detach(socket);
-    if (res.ok) room.system(res.name + ' 離開了房間。', now());
     socket.emit('room:left', { ok: true });
+    /* 最後一個人走了就立刻關房，不留空房佔房號 */
+    if (res.ok && res.emptied) { closeRoom(room, '房間沒有人了，已經自動關閉。'); syncLobby(); return; }
+    if (res.ok) room.system(res.name + ' 離開了房間。', now());
     syncRoom(room);
     syncLobby();
   }));
@@ -435,19 +453,26 @@ setInterval(() => {
   }
 }, TICK_MS);
 
+/**
+ * 關掉一間房並把還連著的人踢回大廳。
+ * @param {boolean} [alreadyRemoved] 回收流程已經把房間從 store 拿掉了，不用再拿一次
+ */
+function closeRoom(room, reason, alreadyRemoved) {
+  if (!alreadyRemoved) store.close(room.code);
+  for (const s of socketsOf(room.code)) {
+    s.emit('room:closed', { reason: reason });
+    s.data.roomCode = null;
+  }
+  roomSockets.delete(room.code);
+  lastSyncAt.delete(room.code);
+}
+
 /* 回收：斷線太久的人、沒人的空房、打完很久的房 */
 setInterval(() => {
   const t = now();
   const swept = store.sweep(t);
   for (const room of swept.changed) syncRoom(room);
-  for (const room of swept.closed) {
-    for (const s of socketsOf(room.code)) {
-      s.emit('room:closed', { reason: '房間沒有人了，已經自動關閉。' });
-      s.data.roomCode = null;
-    }
-    roomSockets.delete(room.code);
-    lastSyncAt.delete(room.code);
-  }
+  for (const room of swept.closed) closeRoom(room, '房間沒有人了，已經自動關閉。', true);
   if (swept.changed.length || swept.closed.length) syncLobby();
 }, 2000);
 

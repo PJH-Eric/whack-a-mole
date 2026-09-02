@@ -15,7 +15,7 @@ const Module = require('module');
 const Rules = require('../public/js/rules.js');
 const AI = require('../public/js/ai.js');
 const RNG = require('../public/js/rng.js');
-const { RoomStore, sanitizeName, sanitizeText } = require('../lib/rooms.js');
+const { RoomStore, sanitizeName, sanitizeText, DISCONNECT_GRACE_MS } = require('../lib/rooms.js');
 
 let pass = 0, fail = 0;
 const fails = [];
@@ -55,13 +55,37 @@ ok(Rules.weightsFor(3).length > Rules.weightsFor(1).length, '愈後面的階段�
 group('階段節奏');
 
 eq(Rules.stageAt(0).no, 1, '0 秒是第 1 階段');
-eq(Rules.stageAt(29999).no, 1, '29.999 秒還在第 1 階段');
-eq(Rules.stageAt(30000).no, 2, '30 秒進第 2 階段');
-eq(Rules.stageAt(60000).no, 3, '60 秒進第 3 階段');
-eq(Rules.stageAt(89999).no, 3, '結束前都是第 3 階段');
+/* 階段切點是「一局的三分之一、三分之二」，不是寫死的 30/60 秒 ——
+   這樣 60 秒或 75 秒的局也走得完三個階段。 */
+for (const sec of Rules.ROUND_SECONDS) {
+  const ms = sec * 1000;
+  eq(Rules.stageAt(0, ms).no, 1, sec + ' 秒局：開頭是第 1 階段');
+  eq(Rules.stageAt(ms / 3 - 1, ms).no, 1, sec + ' 秒局：三分之一前還在第 1 階段');
+  eq(Rules.stageAt(ms / 3, ms).no, 2, sec + ' 秒局：三分之一進第 2 階段');
+  eq(Rules.stageAt(ms * 2 / 3 - 1, ms).no, 2, sec + ' 秒局：三分之二前還在第 2 階段');
+  eq(Rules.stageAt(ms * 2 / 3, ms).no, 3, sec + ' 秒局：三分之二進第 3 階段');
+  eq(Rules.stageAt(ms - 1, ms).no, 3, sec + ' 秒局：結束前是第 3 階段');
+}
+eq(Rules.stageAt(30000, 90000).no, 2, '90 秒局的 30 秒仍然是第 2 階段（和舊版一致）');
+eq(Rules.stageAt(60000, 90000).no, 3, '90 秒局的 60 秒仍然是第 3 階段（和舊版一致）');
 ok(Rules.STAGES[2].spawnMs < Rules.STAGES[1].spawnMs, '愈後面冒得愈快');
 ok(Rules.STAGES[2].maxUp > Rules.STAGES[0].maxUp, '愈後面同時出現的愈多');
 ok(Rules.STAGES[2].upScale < Rules.STAGES[0].upScale, '愈後面停留愈短');
+
+/* 一局長度 */
+eq(Rules.ROUND_SECONDS.join(','), '60,75,90', '一局長度可以選 60／75／90 秒');
+eq(Rules.ROUND_MS, 60000, '預設一局 60 秒');
+eq(Rules.roundMsOf(75), 75000, '75 秒換算成毫秒');
+eq(Rules.roundMsOf(12), 60000, '不在清單裡的長度收斂回預設');
+eq(Rules.roundMsOf(undefined), 60000, '沒給長度就是預設');
+eq(Rules.roundSecOf(90000), 90, '毫秒換回秒數');
+eq(Rules.roundSecOf(123456), 123, '毫秒換秒只是顯示用，不做收斂（伺服器可以自訂長度）');
+eq(Rules.roundSecOf(0), 60, '換不出秒數才回到預設');
+{
+  const st = Rules.createMatch({ seed: 'r', players: [{ id: 'a', name: 'A' }], now: T0, roundMs: 75000 });
+  eq(st.endAt - st.startAt, 75000, '對局真的用了指定的長度');
+  eq(Rules.snapshot(st, T0).remainMs, 75000, '快照的剩餘時間跟著長度走');
+}
 
 /* ============================================================ 計分 */
 group('計分規則');
@@ -286,9 +310,11 @@ group('結算與排名');
 }
 
 /* ============================================================ AI */
-group('電腦對手三段難度');
+group('電腦對手難度分級');
 
-eq(AI.ORDER.join(','), 'easy,normal,hard', '三段難度');
+eq(AI.ORDER.join(','), 'rookie,easy,normal,hard', '四段難度，最低是超級新手');
+ok(AI.levelOf('rookie').reactionMs > AI.levelOf('easy').reactionMs, '超級新手反應比簡單還慢');
+ok(AI.levelOf('rookie').goodMistake > AI.levelOf('easy').goodMistake, '超級新手更常誤敲好人');
 ok(AI.levelOf('easy').reactionMs > AI.levelOf('normal').reactionMs, '簡單反應比普通慢');
 ok(AI.levelOf('normal').reactionMs > AI.levelOf('hard').reactionMs, '普通反應比困難慢');
 ok(AI.levelOf('easy').goodMistake > AI.levelOf('hard').goodMistake, '簡單比較常誤敲好人');
@@ -322,11 +348,12 @@ for (const lv of AI.ORDER) {
   console.log('   ' + AI.levelOf(lv).label + '：平均 ' + Math.round(avg[lv].score)
     + ' 分、誤敲好人 ' + avg[lv].good.toFixed(1) + ' 次、命中率 ' + Math.round(avg[lv].acc * 100) + '%');
 }
+ok(avg.easy.score > avg.rookie.score, '簡單比超級新手高分');
 ok(avg.normal.score > avg.easy.score * 1.4, '普通明顯比簡單高分');
 ok(avg.hard.score > avg.normal.score * 1.2, '困難明顯比普通高分');
 ok(avg.easy.good > avg.hard.good, '簡單比困難更常誤敲好人');
 ok(avg.hard.acc > avg.easy.acc, '困難的命中率比較高');
-ok(avg.easy.score > 0, '簡單也不會被扣到負分（小朋友玩得下去）');
+ok(avg.rookie.score > 0, '連超級新手都不會被扣到負分（小朋友玩得下去）');
 
 /* ============================================================ 房間 */
 group('房間、座位與觀戰');
@@ -502,12 +529,12 @@ group('盤面大小（可設定的幾乘幾）');
   eq(Rules.boardOf(undefined).key, Rules.DEFAULT_BOARD, '沒給盤面就是預設');
   ok(Rules.BOARDS.some((b) => b.holes > 12), '有比預設更多洞的選項');
 
-  const big = Rules.createMatch({ seed: 's1', players: [{ id: 'a', name: 'A' }], now: T0, board: '6x4' });
-  eq(big.holes, 24, '6×4 開出 24 個洞');
-  eq(big.cols, 6, '6×4 的 cols');
-  eq(big.rows, 4, '6×4 的 rows');
-  eq(Rules.snapshot(big, T0).board, '6x4', '快照帶著盤面 key，前端才知道要排幾格');
-  eq(Rules.snapshot(big, T0).holes, 24, '快照帶著洞數');
+  const big = Rules.createMatch({ seed: 's1', players: [{ id: 'a', name: 'A' }], now: T0, board: '6x6' });
+  eq(big.holes, 36, '6×6 開出 36 個洞');
+  eq(big.cols, 6, '6×6 的 cols');
+  eq(big.rows, 6, '6×6 的 rows');
+  eq(Rules.snapshot(big, T0).board, '6x6', '快照帶著盤面 key，前端才知道要排幾格');
+  eq(Rules.snapshot(big, T0).holes, 36, '快照帶著洞數');
 
   const def = Rules.createMatch({ seed: 's1', players: [{ id: 'a', name: 'A' }], now: T0 });
   eq(def.holes, 12, '不指定盤面時維持 12 洞');
@@ -523,23 +550,76 @@ group('盤面大小（可設定的幾乘幾）');
 
   /* 大盤面真的跑得完一局，而且地鼠只會出現在合法的洞裡 */
   {
-    const state = Rules.createMatch({ seed: 'big', players: [{ id: 'me', name: '我' }], now: T0, board: '6x4' });
+    const state = Rules.createMatch({ seed: 'big', players: [{ id: 'me', name: '我' }], now: T0, board: '6x6' });
     const rng = RNG.createRng('spawn:big');
     let t = T0, seen = 0, maxConcurrent = 0, badHole = false;
     while (t < state.endAt + 100) {
       t += 50;
       Rules.tick(state, t, rng);
-      state.moles.forEach((m) => { if (!(m.hole >= 0 && m.hole < 24)) badHole = true; });
+      state.moles.forEach((m) => { if (!(m.hole >= 0 && m.hole < 36)) badHole = true; });
       maxConcurrent = Math.max(maxConcurrent, state.moles.length);
       seen = state.spawned;
     }
-    ok(!badHole, '大盤面的地鼠都待在 0..23 的合法洞裡');
+    ok(!badHole, '大盤面的地鼠都待在 0..35 的合法洞裡');
     ok(seen > 100, '大盤面一局冒得出夠多地鼠', 'got ' + seen);
     ok(maxConcurrent > 6, '大盤面同時在場的地鼠比小盤面多', 'got ' + maxConcurrent);
     ok(maxConcurrent <= 24, '同時在場的地鼠不會超過洞數', 'got ' + maxConcurrent);
     ok(state.over, '大盤面一樣會正常結束');
   }
 }
+
+/* ============================================================ 難度節奏 */
+group('難度分級（地鼠冒多快、停多久）');
+
+{
+  eq(Rules.PACE_ORDER.join(','), 'rookie,easy,normal,hard', '四段難度，最低是超級新手');
+  eq(Rules.paceOf(Rules.DEFAULT_PACE).key, 'normal', '預設難度是普通');
+  eq(Rules.paceOf('亂填').key, 'normal', '不認得的難度收斂回普通，不丟例外');
+  eq(Rules.paceOf(undefined).key, 'normal', '沒給難度就是普通');
+  ok(Rules.PACE_ORDER.every((k) => Rules.paceOf(k).label && Rules.paceOf(k).blurb), '每段難度都有名字與說明');
+
+  const st = { no: 1, fromMs: 0, label: '熱身', spawnMs: 900, jitter: 260, maxUp: 3, upScale: 1.25 };
+  eq(Rules.scaleStage(st, 12, 'normal'), st, '12 洞 + 普通時節奏縮放是恆等的（原本調好的基準不變）');
+
+  const P = Rules.PACE_ORDER.map((k) => Rules.scaleStage(st, 12, k));
+  for (let i = 1; i < P.length; i++) {
+    ok(P[i].upScale < P[i - 1].upScale,
+      Rules.paceOf(Rules.PACE_ORDER[i]).label + ' 的地鼠停留時間比前一級短');
+    ok(P[i].spawnMs < P[i - 1].spawnMs,
+      Rules.paceOf(Rules.PACE_ORDER[i]).label + ' 的地鼠冒得比前一級快');
+  }
+  ok(P[0].upScale > P[3].upScale * 2.5, '超級新手的停留時間是困難的兩倍以上');
+  ok(P[0].maxUp < P[3].maxUp, '超級新手同時在場的地鼠比困難少');
+  ok(Rules.PACE_ORDER.every((k) => Rules.scaleStage(st, 36, k).spawnMs >= 150),
+    '再快也有冒出間隔的下限');
+
+  /* 難度真的會影響一局的地鼠總數與停留時間 */
+  const spawnedAt = {};
+  const upMsAt = {};
+  for (const k of Rules.PACE_ORDER) {
+    const state = Rules.createMatch({ seed: 'pace', players: [{ id: 'me', name: '我' }], now: T0, pace: k });
+    eq(state.pace, k, k + ' 的難度有存進對局狀態');
+    eq(Rules.snapshot(state, T0).pace, k, k + ' 的難度有進快照，前端才知道');
+    const rng = RNG.createRng('spawn:pace');
+    let t = T0, ups = [];
+    while (t < state.endAt + 100) {
+      t += 50;
+      const evs = Rules.tick(state, t, rng);
+      evs.forEach((e) => { if (e.k === 'spawn') ups.push(e.mole.upMs); });
+    }
+    spawnedAt[k] = state.spawned;
+    upMsAt[k] = ups.reduce((a, b) => a + b, 0) / Math.max(1, ups.length);
+  }
+  ok(spawnedAt.rookie < spawnedAt.easy, '超級新手一局冒出來的地鼠比簡單少');
+  ok(spawnedAt.easy < spawnedAt.normal, '簡單比普通少');
+  ok(spawnedAt.normal < spawnedAt.hard, '普通比困難少');
+  ok(upMsAt.rookie > upMsAt.normal * 2, '超級新手的地鼠平均停留時間是普通的兩倍以上',
+    Math.round(upMsAt.rookie) + 'ms vs ' + Math.round(upMsAt.normal) + 'ms');
+  ok(upMsAt.hard < upMsAt.normal, '困難的地鼠停得比普通短');
+  ok(upMsAt.rookie > 2000, '超級新手的地鼠平均停超過 2 秒，來得及看清楚',
+    Math.round(upMsAt.rookie) + 'ms');
+}
+
 
 /* ============================================================ 房間盤面設定 */
 group('房間的盤面大小（房主設定）');
@@ -550,32 +630,109 @@ group('房間的盤面大小（房主設定）');
   const room = r.room;
   eq(room.board, Rules.DEFAULT_BOARD, '新房間用預設盤面');
 
-  ok(!room.setBoard('someone', '6x4').ok, '不是房主不能改盤面');
+  ok(!room.setBoard('someone', '6x6').ok, '不是房主不能改盤面');
   eq(room.board, Rules.DEFAULT_BOARD, '被擋下來之後盤面沒有被改動');
 
   ok(!room.setBoard('h', '99x99').ok, '不存在的盤面被擋下來');
   eq(room.board, Rules.DEFAULT_BOARD, '擋下來之後仍是預設盤面');
 
-  const okRes = room.setBoard('h', '6x4');
+  const okRes = room.setBoard('h', '6x6');
   ok(okRes.ok, '房主可以改盤面');
   ok(okRes.changed, '真的改了會回報 changed');
-  eq(room.board, '6x4', '盤面已更新');
-  ok(!room.setBoard('h', '6x4').changed, '改成同一個值不算變更（不用再廣播訊息）');
+  eq(room.board, '6x6', '盤面已更新');
+  ok(!room.setBoard('h', '6x6').changed, '改成同一個值不算變更（不用再廣播訊息）');
 
-  eq(room.viewFor('h', T0).board, '6x4', '房間投影帶著盤面');
+  eq(room.viewFor('h', T0).board, '6x6', '房間投影帶著盤面');
   ok(room.viewFor('h', T0).boards.length >= 3, '投影帶著可選清單，前端不用自己寫死');
   ok(room.viewFor('h', T0).you.can.setBoard, '房主在 lobby 有改盤面的權限');
-  eq(room.brief().board, '6x4', '大廳列表也看得到盤面');
+  eq(room.brief().board, '6x6', '大廳列表也看得到盤面');
+  /* 難度和盤面一樣是房主設定，而且和 AI 座位的強弱是兩件事 */
+  eq(room.pace, Rules.DEFAULT_PACE, '新房間用預設難度');
+  ok(!room.setPace('someone', 'rookie').ok, '不是房主不能改難度');
+  ok(!room.setPace('h', '亂填').ok, '不存在的難度被擋下來');
+  eq(room.pace, Rules.DEFAULT_PACE, '被擋下來之後難度沒被改動');
+  ok(room.setPace('h', 'rookie').ok, '房主可以改難度');
+  eq(room.pace, 'rookie', '難度已更新');
+  ok(!room.setPace('h', 'rookie').changed, '改成同一個值不算變更');
+  eq(room.viewFor('h', T0).pace, 'rookie', '房間投影帶著難度');
+  ok(room.viewFor('h', T0).paces.length === Rules.PACE_ORDER.length, '投影帶著可選難度清單');
+  ok(room.viewFor('h', T0).you.can.setPace, '房主在 lobby 有改難度的權限');
+  eq(room.brief().pace, 'rookie', '大廳列表也看得到難度');
+  /* 一局長度也是房主設定 */
+  eq(Rules.roundSecOf(room.roundMs), Rules.DEFAULT_ROUND_SEC, '新房間用預設一局長度（60 秒）');
+  ok(!room.setRound('someone', 90).ok, '不是房主不能改一局長度');
+  ok(!room.setRound('h', 45).ok, '不在清單裡的長度被擋下來');
+  ok(room.setRound('h', 90).changed, '房主可以改一局長度');
+  eq(room.roundMs, 90000, '一局長度已更新');
+  ok(!room.setRound('h', 90).changed, '改成同一個值不算變更');
+  eq(room.viewFor('h', T0).roundSec, 90, '房間投影帶著一局長度');
+  eq(room.viewFor('h', T0).rounds.join(','), '60,75,90', '投影帶著可選長度');
+  ok(room.viewFor('h', T0).you.can.setRound, '房主在 lobby 可以改一局長度');
+  eq(room.brief().roundSec, 90, '大廳列表也看得到一局長度');
+
+
 
   /* 開打之後不能改：地洞編號會對不上，進行中的地鼠會跑到不存在的洞 */
   room.join('p2', { name: '玩家二', role: 'player', now: T0 });
   room.setReady('h', true); room.setReady('p2', true);
   const st = room.start('h', T0, { roundMs: 5000, countdownMs: 0 });
   ok(st.ok, '房間開得起來');
-  eq(room.state.holes, 24, '開局用的是房主選的 24 洞盤面');
+  eq(room.state.holes, 36, '開局用的是房主選的 36 洞盤面');
   ok(!room.setBoard('h', '4x3').ok, '對局進行中不能改盤面');
+  ok(!room.setPace('h', 'hard').ok, '對局進行中不能改難度');
+  ok(!room.setRound('h', 60).ok, '對局進行中不能改一局長度');
+  eq(room.state.endAt - room.state.startAt, 90000, '開局用的是房主選的一局長度');
+  eq(room.state.pace, 'rookie', '開局用的是房主選的難度');
   ok(!room.viewFor('h', T0).you.can.setBoard, '進行中權限旗標也關掉了');
-  eq(room.board, '6x4', '進行中盤面保持不變');
+  eq(room.board, '6x6', '進行中盤面保持不變');
+}
+
+/* ============================================================ 空房自動關閉 */
+group('沒人的房間自動關閉');
+
+{
+  const store = new RoomStore({});
+  const r = store.create('h', { name: '房主', now: T0 });
+  const code = r.room.code;
+  r.room.join('p2', { name: '玩家二', role: 'player', now: T0 });
+  eq(store.size(), 1, '房間開起來了');
+
+  const l1 = r.room.leave('p2', T0 + 100);
+  ok(l1.ok, '玩家二離開');
+  ok(!l1.emptied, '還有人在，不算空房');
+  eq(store.size(), 1, '房間還在');
+
+  const l2 = r.room.leave('h', T0 + 200);
+  ok(l2.ok, '房主也離開');
+  ok(l2.emptied, '最後一個人走了，回報房間已空');
+
+  /* 回收不再等 TTL：空房下一輪就關掉 */
+  const swept = store.sweep(T0 + 300);
+  eq(swept.closed.length, 1, '空房立刻被回收（不用等兩分鐘）');
+  eq(swept.closed[0].code, code, '關掉的是那一間');
+  eq(store.size(), 0, '房間已經從清單消失');
+  eq(store.get(code), null, '房號查不到了');
+
+  /* store.close 也可以直接關（伺服器在最後一人離開時就是用這支） */
+  const r2 = store.create('h2', { name: '房主二', now: T0 });
+  eq(store.size(), 1, '再開一間');
+  ok(store.close(r2.room.code), 'close 關得掉');
+  eq(store.size(), 0, '關完就不見了');
+  eq(store.close('ZZZZZ'), null, '關一間不存在的房不會爆掉');
+}
+
+{
+  /* 斷線的人還算在房間裡：座位要保留給他重連，不能馬上把房間關掉 */
+  const store = new RoomStore({});
+  const r = store.create('h', { name: '房主', now: T0 });
+  r.room.disconnect('h', T0 + 10);
+  eq(store.sweep(T0 + 1000).closed.length, 0, '有人斷線但還在保留期，房間不關');
+  eq(store.size(), 1, '房間還在，等他回來');
+
+  /* 過了保留期，人被清掉 → 房間變空 → 同一輪就關掉 */
+  const swept = store.sweep(T0 + 10 + DISCONNECT_GRACE_MS + 1);
+  eq(swept.closed.length, 1, '保留期過了就連房間一起收掉');
+  eq(store.size(), 0, '房間已回收');
 }
 
 /* ============================================================ server URL 設定 */

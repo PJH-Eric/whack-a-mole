@@ -17,6 +17,7 @@
     vibrate: 'wam_vibrate',
     bigMark: 'wam_big_mark',
     board: 'wam_board',
+    roundSec: 'wam_round_sec',
     hammerCursor: 'wam_hammer_cursor',
     sidebarOpen: 'wam_sidebar'
   };
@@ -82,6 +83,8 @@
     bigMark: function (v) { if (v === undefined) return getFlag(KEY.bigMark, true); setFlag(KEY.bigMark, v); return v; },
     /* 單機盤面大小；線上的盤面由房主決定，不看這個值 */
     board: function (v) { if (v === undefined) return get(KEY.board, ''); set(KEY.board, v); return v; },
+    /* 單機一局長度（秒）；線上的長度由房主決定，不看這個值 */
+    roundSec: function (v) { if (v === undefined) return getNum(KEY.roundSec, 0); set(KEY.roundSec, v); return v; },
     hammerCursor: function (v) { if (v === undefined) return getFlag(KEY.hammerCursor, true); setFlag(KEY.hammerCursor, v); return v; },
     sidebarOpen: function (v) { if (v === undefined) return getFlag(KEY.sidebarOpen, true); setFlag(KEY.sidebarOpen, v); return v; },
     best: best,

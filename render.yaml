@@ -25,9 +25,9 @@ services:
       # 若前端另外放在 GitHub Pages 之類的地方，請填那個網址。
       - key: GAME_ALLOWED_ORIGIN
         sync: false
-      # 一局長度（毫秒）
+      # 新房間的預設一局長度（毫秒）。房主可以在房間裡改成 60／75／90 秒。
       - key: ROUND_MS
-        value: "90000"
+        value: "60000"
       # 開賽倒數（毫秒）
       - key: COUNTDOWN_MS
         value: "3000"

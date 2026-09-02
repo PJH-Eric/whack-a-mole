@@ -1,6 +1,6 @@
 /* ===== ai.js — 電腦對手 =====
  *
- * 三段難度的差別是「看得多快、認得多準、手多穩、會不會挑高分的打」，
+ * 難度的差別是「看得多快、認得多準、手多穩、會不會挑高分的打」，
  * 不是只換一個名字。四個參數各自可觀察：
  *   reactionMs  地鼠冒出來到 AI「注意到」它所需的時間
  *   swingMs     兩次揮槌之間的冷卻
@@ -22,6 +22,12 @@
   'use strict';
 
   var LEVELS = {
+    rookie: {
+      key: 'rookie', label: '超級新手', emoji: '🍼',
+      reactionMs: 980, reactionJitter: 340, swingMs: 1050, swingJitter: 330,
+      goodMistake: 0.46, whiff: 0.34, valueBias: 0.05, moveMs: 140,
+      blurb: '剛學會拿槌子，慢吞吞又常常敲錯，陪第一次玩的人剛剛好。'
+    },
     easy: {
       key: 'easy', label: '簡單', emoji: '🌱',
       reactionMs: 640, reactionJitter: 220, swingMs: 700, swingJitter: 220,
@@ -42,7 +48,7 @@
     }
   };
 
-  var ORDER = ['easy', 'normal', 'hard'];
+  var ORDER = ['rookie', 'easy', 'normal', 'hard'];
 
   /** 兩個地洞在方格上的距離（切比雪夫距離，斜著移動算一格） */
   function gridDistance(a, b, cols) {

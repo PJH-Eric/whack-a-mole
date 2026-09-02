@@ -473,6 +473,83 @@ async function main() {
     }
   }
 
+  group('難度分級（地鼠速度）');
+  {
+    const { ctx, page } = await newPage(VIEWPORTS[1]);   // 平板橫向
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.click('#b-solo');
+    await sleep(220);
+    const levels = await page.$$eval('#opt-ai .pickcard', (bs) => bs.map((b) => b.dataset.v));
+    ok(levels.join(',') === 'rookie,easy,normal,hard',
+      '單機設定看得到四段難度（含超級新手）', levels.join(','));
+    const rounds = await page.$$eval('#opt-round .pickcard', (bs) => bs.map((b) => b.dataset.v));
+    ok(rounds.join(',') === '60,75,90', '單機設定看得到 60／75／90 秒', rounds.join(','));
+
+    /* 量「一隻地鼠從冒出到縮回停多久」，看的就是玩家真正看到的東西。
+       但每種地鼠的基礎停留時間差到 5 倍（疾風鼠 640ms、大王鼠 2700ms），
+       混在一起平均會被抽到的種類洗掉，所以按種類分開統計、只比同一種。
+       另外電腦對手會提前把地鼠敲掉，這裡先關成 0 個。 */
+    await page.click('#opt-aicount [data-v="0"]');
+    await page.click('#opt-round [data-v="90"]');       // 第 1 階段有 30 秒，取樣才夠
+    await sleep(140);
+
+    /* 用 data-mole（地鼠 id）當 key，同一個洞連續冒兩隻才不會被併成一隻長的 */
+    const MEASURE = (ms) => `new Promise((res) => {
+      const up = new Map();                 // moleId -> {t, type}
+      const byType = {};
+      const t0 = performance.now();
+      const timer = setInterval(() => {
+        const now = performance.now();
+        const live = new Set();
+        document.querySelectorAll('.mole-slot').forEach((s) => {
+          const id = s.dataset.mole;
+          if (!id || !s.classList.contains('up') || getComputedStyle(s).opacity === '0') return;
+          live.add(id);
+          if (!up.has(id)) up.set(id, { t: now, type: (s.className.match(/type-([a-z]+)/) || [])[1] || '?' });
+        });
+        for (const [id, rec] of [...up]) {
+          if (live.has(id)) continue;
+          up.delete(id);
+          const d = now - rec.t;
+          if (d > 150) (byType[rec.type] = byType[rec.type] || []).push(d);
+        }
+        if (now - t0 > ${ms}) { clearInterval(timer); res(byType); }
+      }, 60);
+    })`;
+
+    /* 用中位數比平均值更適合這種量測：完整檢查同時跑很多頁面時，
+       瀏覽器事件迴圈偶爾會停頓；那只會讓個別樣本看起來變長，不代表地鼠真的多露臉。 */
+    const median = (values) => {
+      const sorted = values.slice().sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    };
+    const dwell = {};
+    for (const lv of ['rookie', 'normal', 'hard']) {
+      await page.click('#opt-ai [data-v="' + lv + '"]');
+      await sleep(140);
+      await page.click('#b-solo-start');
+      await sleep(3600);                              // 單機倒數 3 秒，等它真的開打
+      const byType = await page.evaluate(MEASURE(25000));
+      const common = byType.mole || [];               // 小土鼠：第 1 階段最常見
+      ok(common.length >= 3, lv + ' 量到夠多小土鼠', common.length + ' 隻');
+      dwell[lv] = common.length ? median(common) : 0;
+      await page.evaluate(() => document.getElementById('b-quit').click());
+      await sleep(340);
+      await page.click('#b-solo');
+      await sleep(240);
+    }
+    console.log('     小土鼠中位停留：超級新手 ' + Math.round(dwell.rookie)
+      + 'ms・普通 ' + Math.round(dwell.normal) + 'ms・困難 ' + Math.round(dwell.hard) + 'ms');
+    ok(dwell.rookie > dwell.normal * 1.7, '超級新手的地鼠停得比普通久很多',
+      Math.round(dwell.rookie) + ' vs ' + Math.round(dwell.normal));
+    ok(dwell.normal > dwell.hard * 1.15, '普通的地鼠停得比困難久',
+      Math.round(dwell.normal) + ' vs ' + Math.round(dwell.hard));
+    ok(dwell.rookie > 3000, '超級新手的小土鼠停超過 3 秒，看得清楚再敲',
+      Math.round(dwell.rookie) + 'ms');
+    await ctx.close();
+  }
+
   group('鐵鎚滑鼠游標');
   {
     const { ctx, page } = await newPage(VIEWPORTS[4]);   // 桌機才有滑鼠
@@ -488,19 +565,45 @@ async function main() {
     ok(/\)\s*\d+\s+\d+\s*,\s*\w+$/.test(on.cur.trim()), '游標有指定熱點與 fallback', on.cur.slice(-24));
     ok(on.hit !== on.cur, '按下去有另一張甩下去的圖');
 
+    /* 設定畫面還沒開打，不可以是鐵鎚 */
     await page.click('#b-solo');
-    await sleep(180);
+    await sleep(220);
+    const onSetup = await page.evaluate(() => ({
+      playing: document.body.classList.contains('playing'),
+      cursor: getComputedStyle(document.getElementById('b-solo-start')).cursor
+    }));
+    ok(!onSetup.playing, '設定畫面不算「在打」');
+    ok(onSetup.cursor.indexOf('data:image') < 0, '設定畫面用一般游標', onSetup.cursor.slice(0, 30));
+
     await page.click('#b-solo-start');
-    await sleep(700);
-    const applied = await page.evaluate(() => {
-      const h = document.querySelector('.hole');
-      return getComputedStyle(h).cursor;
-    });
-    ok(applied.indexOf('data:image/svg+xml') > 0, '對局中地洞真的套用了鐵鎚游標', applied.slice(0, 40));
+    /* 倒數中也還沒開打 */
+    await sleep(260);
+    const counting = await page.evaluate(() => ({
+      playing: document.body.classList.contains('playing'),
+      cursor: getComputedStyle(document.querySelector('.hole')).cursor
+    }));
+    ok(!counting.playing, '開賽倒數還不算「在打」');
+    ok(counting.cursor.indexOf('data:image') < 0, '倒數中維持一般游標', counting.cursor.slice(0, 30));
+
+    await sleep(3600);
+    const applied = await page.evaluate(() => ({
+      playing: document.body.classList.contains('playing'),
+      cursor: getComputedStyle(document.querySelector('.hole')).cursor
+    }));
+    ok(applied.playing, '開打之後 body.playing 成立');
+    ok(applied.cursor.indexOf('data:image/svg+xml') > 0, '對局中地洞真的套用了鐵鎚游標', applied.cursor.slice(0, 40));
+
+    /* 離開回首頁要收回去 */
+    await page.evaluate(() => document.getElementById('b-quit').click());
+    await sleep(320);
+    const afterQuit = await page.evaluate(() => document.body.classList.contains('playing'));
+    ok(!afterQuit, '離開對局後旗標收回去，首頁不會是鐵鎚');
+    await page.click('#b-solo');
+    await sleep(200);
+    await page.click('#b-solo-start');
+    await sleep(3800);
 
     /* 關掉之後要真的變回一般游標 */
-    await page.evaluate(() => document.getElementById('b-settings').click());
-    await sleep(260);
     await page.evaluate(() => { const c = document.getElementById('set-hammer'); c.checked = false; c.dispatchEvent(new Event('change')); });
     await sleep(200);
     const off = await page.evaluate(() => ({
