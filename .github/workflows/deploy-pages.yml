@@ -32,10 +32,11 @@ permissions:
   pages: write
   id-token: write
 
-# 同時只跑一個佈署，後來的會取代還沒跑完的
+# 同時只跑一個佈署。不取消跑到一半的那一次 —— Pages 佈署被砍在中間會留下半套的站台，
+# 寧可排隊等它跑完。
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

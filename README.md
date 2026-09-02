@@ -152,14 +152,23 @@ GitHub Pages 只能放靜態檔案，**跑不動 `server.js`**。所以架構是
 前端也可以整包由 `server.js` 自己送出來（開 `npm start` 就是這樣），
 那種情況下 `config.js` 會自動用同源，什麼都不用設定。以下是「前後端分開」的做法。
 
+這個 repo 佈署出來的實際位置：
+
+| 東西 | 網址 |
+|---|---|
+| 原始碼 | https://github.com/PJH-Eric/whack-a-mole |
+| 前端（GitHub Pages） | https://pjh-eric.github.io/whack-a-mole/ |
+| 伺服器（Render） | Render 建好之後填進 repo 變數 `GAME_SERVER_URL` |
+
 ### 步驟 1：把伺服器放上 Render
 
 1. 把這個 repo push 到 GitHub。
 2. Render → **New → Blueprint** → 指到這個 repo。`render.yaml` 已經寫好了
    （Node 20、`npm ci --omit=dev`、`node server.js`、健康檢查 `/health`）。
 3. 部署完成後把網址記下來，例如 `https://whack-a-mole.onrender.com`。
-4. 在 Render 的 **Environment** 把 `GAME_ALLOWED_ORIGIN` 設成你的 Pages 網址，
-   例如 `https://你的帳號.github.io`。**這一步不做，瀏覽器會因為 CORS 擋掉連線。**
+4. 在 Render 的 **Environment** 把 `GAME_ALLOWED_ORIGIN` 設成你的 Pages 來源，
+   這個 repo 是 `https://pjh-eric.github.io`（只要來源，不含路徑）。
+   **這一步不做，瀏覽器會因為 CORS 擋掉連線。**
 
 可設定的環境變數：
 
