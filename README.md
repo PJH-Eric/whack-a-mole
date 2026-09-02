@@ -245,8 +245,9 @@ npm run test:online   # 線上流程實測（67 項，真的開伺服器 + 多�
 npm run test:leave    # 離開確認流程（遊戲內視窗、確認後立即回首頁）
 npm run test:board    # 各裝置盤面列欄與選項一致性
 npm run test:sync     # 地鼠本體與分數標記出現／消失同步
-npm run test:browser  # 版面與流程實測（227 項，需要 playwright）
-npm run verify        # 六個一起跑
+npm run test:sidebar  # 切換側欄分頁後操作列仍固定
+npm run test:browser  # 版面與流程實測（574 項，需要 playwright）
+npm run verify        # 七個一起跑
 ```
 
 `npm run test:browser` 需要先裝瀏覽器：
@@ -295,6 +296,7 @@ whack-a-mole/
 │  ├─ leave-check.js         離開確認流程實測
 │  ├─ board-check.js         各裝置盤面一致性實測
 │  ├─ sync-check.js          地鼠與分數標記同步實測
+│  ├─ sidebar-check.js       側欄分頁與操作列固定實測
 │  └─ browser-check.js       版面與流程實測（Playwright）
 ├─ tests/verify.js           規則單元測試
 ├─ .github/workflows/        CI + GitHub Pages 自動佈署

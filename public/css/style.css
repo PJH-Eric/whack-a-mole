@@ -238,7 +238,7 @@ body{
 
 .mystat{font-size:.73rem;color:var(--ink-soft);line-height:1.55;text-align:center;
   border-top:2px dashed var(--line);padding-top:6px}
-.side-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:8px}
+.side-actions{display:flex;flex:0 0 auto;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:8px}
 .side-actions .btn3d{flex:1 1 76px;--d:5px;min-height:42px;font-size:.78rem;padding:7px 6px calc(7px + var(--d))}
 
 /* 聊天室 */

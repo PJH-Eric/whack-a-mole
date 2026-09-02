@@ -11,8 +11,9 @@
     "test:leave": "node scripts/leave-check.js",
     "test:board": "node scripts/board-check.js",
     "test:sync": "node scripts/sync-check.js",
+    "test:sidebar": "node scripts/sidebar-check.js",
     "test:browser": "node scripts/browser-check.js",
-    "verify": "node tests/verify.js && node scripts/online-check.js && node scripts/leave-check.js && node scripts/board-check.js && node scripts/sync-check.js && node scripts/browser-check.js",
+    "verify": "node tests/verify.js && node scripts/online-check.js && node scripts/leave-check.js && node scripts/board-check.js && node scripts/sync-check.js && node scripts/sidebar-check.js && node scripts/browser-check.js",
     "inject": "node scripts/inject-server-url.js"
   },
   "engines": {
