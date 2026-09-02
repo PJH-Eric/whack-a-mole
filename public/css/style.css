@@ -304,8 +304,8 @@ body{
   container-type:size;
 }
 .board{
-  /* --bc / --br 由 render.js 寫入：洞數是規則決定的，怎麼排則是看可用空間的形狀
-     （見 render.js 的 arrange()）。排法只是版面，地洞編號不受影響。 */
+  /* --bc / --br 由 render.js 寫入，就是玩家（或房主）選的盤面列欄。
+     各裝置只會等比縮放盤面，不會改變列欄，所以地洞編號在哪台裝置上都一樣。 */
   --bc:4;--br:3;
   --gc:var(--bc);--gr:var(--br);
   --ar:calc(var(--gc) / var(--gr) * 1.06);
@@ -371,6 +371,20 @@ body{
 .hole-flash.hit-miss{background:radial-gradient(circle,rgba(122,106,136,.28),rgba(122,106,136,0) 70%)}
 .hole.shake{animation:shake .26s}
 @keyframes shake{0%,100%{transform:translate(0,0)}25%{transform:translate(-3px,2px)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,-1px)}}
+
+/* 窄版的即時排行浮條：盤面等比縮放後周圍一定有留白，把排行貼在那裡。
+   寬版有固定側欄就不需要，所以預設不顯示（見下面的 RWD 區塊）。 */
+.livebar{display:none}
+.lchip{
+  display:inline-flex;align-items:center;gap:5px;min-width:0;
+  border:2.5px solid var(--ink);border-radius:999px;background:rgba(255,253,248,.94);
+  border-left-width:7px;border-left-color:var(--who,var(--grape-d));
+  padding:2px 9px;font-size:.72rem;font-weight:800;line-height:1.55;
+}
+.lchip.me{background:var(--lemon)}
+.lchip b{font-size:.68rem;color:var(--ink-soft)}
+.lchip .ln{max-width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lchip i{font-style:normal;font-variant-numeric:tabular-nums}
 
 /* 特效層 */
 .fx{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
@@ -500,10 +514,19 @@ body{
   .stage{padding-left:calc(8px + var(--safe-l))}
   .hud{padding-left:0}
   .board-wrap{padding-bottom:4px}
+  /* 盤面上方的留白拿來放即時排行（pointer-events:none，不會擋到敲擊） */
+  .livebar{
+    display:flex;position:absolute;z-index:7;pointer-events:none;
+    left:8px;right:8px;top:6px;justify-content:center;flex-wrap:wrap;gap:5px;
+  }
 }
 
-/* 手機橫向：高度很矮，HUD 壓扁、盤面回到 4x3 */
+/* 手機橫向：高度很矮，HUD 壓扁；盤面列欄不變，只會縮小 */
 @media (orientation:landscape) and (max-height:520px){
+  /* 橫向的留白在盤面左右，排行改成靠左一欄，不會壓到地洞 */
+  .livebar{left:6px;right:auto;top:6px;bottom:6px;width:min(26%,138px);
+    flex-direction:column;justify-content:flex-start;align-items:stretch}
+  .lchip .ln{max-width:100%}
   .hud{padding-top:calc(4px + var(--safe-t));gap:7px}
   .hud-time b,.hud-score b{font-size:1.15rem}
   .hud-time,.hud-score{padding:2px 9px;min-width:64px}

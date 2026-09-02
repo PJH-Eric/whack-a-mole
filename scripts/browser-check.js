@@ -50,6 +50,16 @@ function ok(cond, name, extra) {
 function group(t) { console.log('\n── ' + t); }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* 打到一半按離開會先跳遊戲內確認（見 app.js 的 doAction），確認後才回首頁 */
+async function leaveMatch(page) {
+  await page.evaluate(() => document.getElementById('b-quit').click());
+  await sleep(140);
+  const asked = await page.evaluate(() => !document.getElementById('confirm-modal').hidden);
+  if (asked) await page.evaluate(() => document.getElementById('b-confirm-ok').click());
+  await sleep(220);
+  return asked;
+}
+
 /* 依實際使用情境排序：平板最優先 */
 const VIEWPORTS = [
   { key: 'tablet-portrait', label: '平板直向 768×1024', w: 768, h: 1024, touch: true, narrow: true },
@@ -304,8 +314,7 @@ async function main() {
     }
 
     await page.screenshot({ path: path.join(SHOTS, vp.key + '-game.png') });
-    await page.evaluate(() => document.getElementById('b-quit').click());
-    await sleep(300);
+    await leaveMatch(page);
     await page.screenshot({ path: path.join(SHOTS, vp.key + '-home.png') });
     await ctx.close();
   }
@@ -483,8 +492,7 @@ async function main() {
         if (key === keys[keys.length - 1]) {
           await page.screenshot({ path: path.join(SHOTS, 'board-' + vp.key + '-' + key + '.png') });
         }
-        await page.evaluate(() => document.getElementById('b-quit').click());
-        await sleep(260);
+        await leaveMatch(page);
         await page.click('#b-solo');
         await sleep(180);
       }
@@ -553,8 +561,7 @@ async function main() {
       const common = byType.mole || [];               // 小土鼠：第 1 階段最常見
       ok(common.length >= 3, lv + ' 量到夠多小土鼠', common.length + ' 隻');
       dwell[lv] = common.length ? median(common) : 0;
-      await page.evaluate(() => document.getElementById('b-quit').click());
-      await sleep(340);
+      await leaveMatch(page);
       await page.click('#b-solo');
       await sleep(240);
     }
@@ -613,8 +620,7 @@ async function main() {
     ok(applied.cursor.indexOf('data:image/svg+xml') > 0, '對局中地洞真的套用了鐵鎚游標', applied.cursor.slice(0, 40));
 
     /* 離開回首頁要收回去 */
-    await page.evaluate(() => document.getElementById('b-quit').click());
-    await sleep(320);
+    await leaveMatch(page);
     const afterQuit = await page.evaluate(() => document.body.classList.contains('playing'));
     ok(!afterQuit, '離開對局後旗標收回去，首頁不會是鐵鎚');
     await page.click('#b-solo');

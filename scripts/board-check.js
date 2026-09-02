@@ -79,7 +79,9 @@ async function main() {
           && actual.actual.holes === actual.selected.holes
           && actual.domHoles === actual.selected.holes,
         viewport.label + ' ' + key + ' 實際盤面符合選項', JSON.stringify(actual));
+        /* 單機打到一半按離開會先問一句，確認後才回首頁 */
         await page.click('#b-quit');
+        if (await page.$eval('#confirm-modal', (e) => !e.hidden)) await page.click('#b-confirm-ok');
         await page.click('#b-solo');
         await sleep(80);
       }
