@@ -4,11 +4,10 @@
  *
  * 解析優先序：
  *   1. 網址參數 ?server=https://example.com   （臨時覆蓋，方便測 staging 或跨電腦連線）
- *   2. 使用者在「遊戲設定」裡自己填的位址（存在這台裝置的 localStorage）
- *   3. 建置時注入（scripts/inject-server-url.js 會改寫下面 INJECTED 那一行；
+ *   2. 建置時注入（scripts/inject-server-url.js 會改寫下面 INJECTED 那一行；
  *      GitHub Pages 的自動佈署就是用 repo 變數 GAME_SERVER_URL 注入到這裡）
- *   4. 頁面本身就是伺服器發出來的（http/https 且不是 file://）→ 用同源
- *   5. 都不是 → null，代表只能玩單機
+ *   3. 頁面本身就是伺服器發出來的（http/https 且不是 file://）→ 用同源
+ *   4. 都不是 → null，代表只能玩單機
  *
  * 規則：必須是 http/https 的絕對網址；頁面走 https 時不接受 http（瀏覽器會擋混合內容）。
  * 格式不合會被擋下並記錄在 Config.error，不會靜默回退到 localhost 或任何寫死的網域。
@@ -20,23 +19,16 @@
   var INJECTED = '';
   /* GAME_SERVER_URL:END */
 
-  var STORE_KEY = 'wam_server_url';
-
-  function loadStored() {
-    try { return localStorage.getItem(STORE_KEY) || ''; } catch (e) { return ''; }
-  }
-
   /**
    * 純函式：決定最後要用哪個 server URL。測試直接呼叫這一支。
    * @param {string} injected      建置時注入的值
    * @param {string} queryValue    ?server= 的值
    * @param {string} pageProtocol  'https:' | 'http:' | 'file:'
    * @param {string} pageOrigin    同源回退用的 location.origin
-   * @param {string} [stored]      使用者在設定裡自己填的位址
    */
-  function resolve(injected, queryValue, pageProtocol, pageOrigin, stored) {
-    var raw = String(queryValue || stored || injected || '').trim();
-    var source = queryValue ? 'query' : (stored ? 'stored' : 'injected');
+  function resolve(injected, queryValue, pageProtocol, pageOrigin) {
+    var raw = String(queryValue || injected || '').trim();
+    var source = queryValue ? 'query' : 'injected';
 
     if (!raw) {
       /* 頁面本來就是伺服器送出來的 → 直接連同一台，這是最常見的情況 */
@@ -73,7 +65,7 @@
   }
 
   var loc = (typeof w.location === 'object' && w.location) ? w.location : { search: '', protocol: '', origin: '' };
-  var r = resolve(INJECTED, queryParam(loc.search, 'server'), loc.protocol, loc.origin, loadStored());
+  var r = resolve(INJECTED, queryParam(loc.search, 'server'), loc.protocol, loc.origin);
 
   if (r.status === 'invalid' && typeof console !== 'undefined' && console.warn) {
     console.warn('[config] server URL 設定有問題，線上功能會停用：' + r.error);
@@ -118,14 +110,13 @@
       return base + '?' + qs.join('&');
     },
 
-    /** 給人看的一行說明，設定彈窗直接用 */
+    /** 線上連線狀態列使用的一行說明 */
     describe: function () {
       if (Config.status === 'invalid') return '設定有誤（線上已停用）';
       if (!Config.serverUrl) return '未設定（只能玩單機）';
       var host = Config.serverUrl.replace(/^https?:\/\//, '');
       var tag = Config.source === 'query' ? '（網址參數）'
-        : (Config.source === 'stored' ? '（你自己設定的）'
-          : (Config.source === 'injected' ? '（建置注入）' : '（同源）'));
+        : (Config.source === 'injected' ? '（建置注入）' : '（同源）');
       return host + tag;
     },
 
@@ -149,20 +140,6 @@
           clearTimeout(timer);
           cb(state);
         });
-    },
-
-    /* 讓玩家在「遊戲設定」裡直接填伺服器位址。
-     * GitHub Pages 這種「前端和伺服器不同網域」的情況，
-     * 除了建置注入之外也要有這條路，不然使用者只能自己改網址列。
-     * 存好之後需要重新載入頁面才會生效（連線是在啟動時建立的）。 */
-    storedUrl: loadStored,
-    setServerUrl: function (value) {
-      var v = String(value || '').trim();
-      if (!v) { try { localStorage.removeItem(STORE_KEY); } catch (e) {} return { ok: true, cleared: true }; }
-      var test = resolve('', '', loc.protocol, loc.origin, v);
-      if (test.status !== 'ok') return { ok: false, error: test.error || '網址格式不對' };
-      try { localStorage.setItem(STORE_KEY, test.url); } catch (e) { return { ok: false, error: '這個瀏覽器不讓我存設定。' }; }
-      return { ok: true, url: test.url };
     },
 
     /* 測試用：不依賴瀏覽器環境也能驗證解析規則 */

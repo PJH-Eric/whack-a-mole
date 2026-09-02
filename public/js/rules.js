@@ -24,8 +24,8 @@
   var ROWS = 3;
   var HOLES = COLS * ROWS;          // 預設 12 個地洞，手機直向也塞得下
 
-  /* 可以選的盤面大小。直向裝置會把 cols/rows 對調顯示，那純粹是排版，
-   * 地洞的編號不會變，所以規則、AI、重播都不受影響。 */
+  /* 可以選的盤面大小。各裝置只會縮放盤面，不會把 cols/rows 對調，
+   * 地洞的編號也不會變，所以規則、AI、重播都不受影響。 */
   var BOARDS = [
     { key: '3x3', cols: 3, rows: 3, label: '3 × 3', note: '9 洞・最小' },
     { key: '4x3', cols: 4, rows: 3, label: '4 × 3', note: '12 洞・標準' },

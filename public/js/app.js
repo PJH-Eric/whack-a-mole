@@ -94,6 +94,7 @@
   /* ------------------------------------------------------------ 設定彈窗 */
 
   var lastFocus = null;
+  var pendingConfirm = null;
 
   function openModal(id) {
     lastFocus = document.activeElement;
@@ -111,6 +112,7 @@
   function closeModal(id) {
     $(id).hidden = true;
     if (id === 'settings-modal') $('b-settings').setAttribute('aria-expanded', 'false');
+    if (id === 'confirm-modal') pendingConfirm = null;
     if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }
   }
 
@@ -133,6 +135,25 @@
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
 
+  function askConfirm(title, message, onConfirm) {
+    $('confirm-title').textContent = title;
+    $('confirm-message').textContent = message;
+    pendingConfirm = onConfirm;
+    openModal('confirm-modal');
+    $('b-confirm-ok').focus();
+  }
+
+  function cancelConfirm() {
+    closeModal('confirm-modal');
+  }
+
+  function acceptConfirm() {
+    var onConfirm = pendingConfirm;
+    pendingConfirm = null;
+    closeModal('confirm-modal');
+    if (onConfirm) onConfirm();
+  }
+
   function syncSettingsUi() {
     $('set-music').checked = Sound.isMusicOn();
     $('set-sfx').checked = Sound.isSfxOn();
@@ -143,8 +164,6 @@
     $('set-motion').checked = Store.reduceMotion();
     $('set-mark').checked = Store.bigMark();
     $('set-hammer').checked = Store.hammerCursor();
-    $('set-server').textContent = Config.describe();
-    $('set-server-url').value = Config.storedUrl ? Config.storedUrl() : '';
     $('set-audio-note').textContent = Sound.isUnlocked()
       ? '' : '瀏覽器規定要先碰一下畫面才會出聲，按任何一顆按鈕就會解鎖。';
   }
@@ -898,7 +917,8 @@
   function doAction(act) {
     if (act === 'quit') {
       if (S.mode === 'online' && S.view && S.view.phase === 'playing' && S.view.you.role === 'player') {
-        if (!w.confirm('這一局還沒打完，確定要離開嗎？你的分數會留在排行榜上。')) return;
+        askConfirm('離開這一局？', '這一局還沒打完，你的分數會留在排行榜上。', leaveGame);
+        return;
       }
       leaveGame();
       return;
@@ -996,6 +1016,9 @@
     $('b-settings').addEventListener('click', function () { openModal('settings-modal'); });
     $('b-settings-close').addEventListener('click', function () { closeModal('settings-modal'); });
     $('b-settings-ok').addEventListener('click', function () { closeModal('settings-modal'); });
+    $('b-confirm-close').addEventListener('click', cancelConfirm);
+    $('b-confirm-cancel').addEventListener('click', cancelConfirm);
+    $('b-confirm-ok').addEventListener('click', acceptConfirm);
     $('set-music').addEventListener('change', function () { Sound.setMusic(this.checked); });
     $('set-sfx').addEventListener('change', function () { Sound.setSfx(this.checked); });
     $('set-chatcue').addEventListener('change', function () { Sound.setChatCue(this.checked); });
@@ -1005,12 +1028,6 @@
     $('set-motion').addEventListener('change', function () { Store.reduceMotion(this.checked); applyDisplayPrefs(); });
     $('set-mark').addEventListener('change', function () { Store.bigMark(this.checked); applyDisplayPrefs(); });
     $('set-hammer').addEventListener('change', function () { Store.hammerCursor(this.checked); applyDisplayPrefs(); });
-    $('b-server-save').addEventListener('click', function () {
-      var res = Config.setServerUrl($('set-server-url').value);
-      if (!res.ok) return toast(res.error || '網址格式不對，請填完整的 https:// 網址。', 3600);
-      toast(res.cleared ? '已清除自訂位址，重新載入中…' : '已存好，重新載入中…', 1400);
-      setTimeout(function () { w.location.reload(); }, 900);
-    });
     $('b-settings-reset').addEventListener('click', function () {
       Sound.resetDefaults(); Store.resetDefaults(); applyDisplayPrefs(); syncSettingsUi();
       toast('已恢復預設設定。');
@@ -1024,13 +1041,14 @@
 
     /* 戰績 */
     $('b-stats-reset').addEventListener('click', function () {
-      if (!w.confirm('確定要清除這台裝置上的戰績嗎？')) return;
-      try {
-        localStorage.removeItem(Store.KEY.stats);
-        localStorage.removeItem(Store.KEY.best);
-      } catch (err) {}
-      paintStats();
-      toast('戰績已清除。');
+      askConfirm('清除本機戰績？', '清除後無法復原，確定要繼續嗎？', function () {
+        try {
+          localStorage.removeItem(Store.KEY.stats);
+          localStorage.removeItem(Store.KEY.best);
+        } catch (err) {}
+        paintStats();
+        toast('戰績已清除。');
+      });
     });
 
     /* 選項卡片（單機難度／對手數量） */
@@ -1047,8 +1065,8 @@
       });
     });
 
-    /* 轉向／改變視窗大小時，盤面重挑一次排法（洞數不變，只是換排列） */
-    w.addEventListener('resize', function () { SvgUI.repaintAll(); Board.relayout(); });
+    /* 轉向／改變視窗大小時只重繪裝飾；盤面列欄固定，尺寸交給 CSS 適配。 */
+    w.addEventListener('resize', function () { SvgUI.repaintAll(); });
   }
 
   function paintSoloOptions() {

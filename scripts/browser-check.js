@@ -227,6 +227,25 @@ async function main() {
     await page.click('#b-settings');
     await sleep(280);
     ok(await page.$eval('#settings-modal', (e) => !e.hidden), vp.label + ' 設定彈窗打得開');
+    const switchAlignment = await page.$$eval('#settings-modal .switch', (nodes) => nodes.map((node) => {
+      const own = getComputedStyle(node);
+      const pseudo = getComputedStyle(node, '::after');
+      const matrix = new DOMMatrixReadOnly(pseudo.transform);
+      const knobHeight = parseFloat(pseudo.height)
+        + parseFloat(pseudo.borderTopWidth) + parseFloat(pseudo.borderBottomWidth);
+      const trackHeight = node.getBoundingClientRect().height
+        - parseFloat(own.borderTopWidth) - parseFloat(own.borderBottomWidth);
+      return {
+        top: parseFloat(pseudo.top),
+        translateY: matrix.m42,
+        trackCenter: trackHeight / 2,
+        knobHalf: knobHeight / 2
+      };
+    }));
+    ok(switchAlignment.length > 0, vp.label + ' 設定裡有按鈕開關');
+    ok(switchAlignment.every((s) => Math.abs(s.top - s.trackCenter) < 0.1
+      && Math.abs(s.translateY + s.knobHalf) < 0.1),
+      vp.label + ' 開關圓鈕垂直置中', JSON.stringify(switchAlignment[0]));
     await probe(page, vp.label + ' / 設定彈窗');
     const focusInside = await page.evaluate(() => document.getElementById('settings-modal').contains(document.activeElement));
     ok(focusInside, vp.label + ' 開啟後焦點在彈窗裡');
@@ -379,12 +398,8 @@ async function main() {
     ok(await page.$eval('#set-music', (e) => e.checked) === musicOff, '音樂開關重新載入後仍保留');
     ok(await page.$eval('#set-motion', (e) => e.checked), '減少動態設定重新載入後仍保留');
     ok(await page.evaluate(() => document.body.classList.contains('reduce-motion')), '減少動態有真的套用到畫面');
-
-    /* 伺服器位址欄位（GitHub Pages 用得到） */
-    await page.fill('#set-server-url', 'not-a-url');
-    await page.click('#b-server-save');
-    await sleep(400);
-    ok(await page.$eval('#toast', (e) => !e.hidden && e.textContent.indexOf('網址') >= 0), '亂填的伺服器位址會被擋下');
+    ok(await page.$('#set-server-url') === null && await page.$('#b-server-save') === null,
+      '設定裡已移除伺服器位址設定');
     await ctx.close();
   }
 
@@ -427,8 +442,12 @@ async function main() {
           };
         });
         const tag = vp.label + ' / ' + key;
-        const want = Number(key.split('x')[0]) * Number(key.split('x')[1]);
+        const wantCols = Number(key.split('x')[0]);
+        const wantRows = Number(key.split('x')[1]);
+        const want = wantCols * wantRows;
         ok(m.holes === want, tag + ' 地洞數正確', 'got ' + m.holes + ' want ' + want);
+        ok(Number(m.cols) === wantCols && Number(m.rows) === wantRows, tag + ' 實際列欄符合選項',
+          'got ' + m.cols + '×' + m.rows + ' want ' + wantCols + '×' + wantRows);
         ok(Number(m.cols) * Number(m.rows) === want, tag + ' 排法乘起來等於洞數',
           m.cols + '×' + m.rows);
         ok(m.overW <= 1 && m.overH <= 1, tag + ' 盤面沒有超出可用空間',
@@ -726,6 +745,19 @@ async function main() {
     const sum = await A.page.$eval('#sum-room', (e) => e.textContent);
     ok(sum.indexOf(code) >= 0, '左側摘要顯示房號');
     ok(sum.indexOf('房主') >= 0, '左側摘要顯示自己的身分');
+
+    /* 離開對局：使用遊戲內確認，確認後立即回首頁 */
+    let nativeDialog = false;
+    A.page.on('dialog', async (dialog) => {
+      nativeDialog = true;
+      await dialog.accept();
+    });
+    await A.page.click('#b-quit');
+    ok(!nativeDialog, '離開確認不使用瀏覽器原生視窗');
+    ok(await A.page.$eval('#confirm-modal', (e) => !e.hidden), '離開時顯示遊戲內確認視窗');
+    await A.page.click('#b-confirm-ok');
+    await A.page.waitForFunction(() => document.querySelector('#s-home').classList.contains('active'), null, { timeout: 500 });
+    ok(await A.page.$eval('#s-home', (e) => e.classList.contains('active')), '按下確認後立即回到主選單');
 
     for (const x of [A, B, C]) await x.ctx.close();
   }

@@ -742,9 +742,7 @@ group('server URL 解析（GitHub Pages 用得到）');
   /* config.js 是給瀏覽器用的，這裡用最小的 window stub 載進來測純函式 */
   const fakeWin = { location: { search: '', protocol: 'https:', origin: 'https://example.github.io' } };
   const src = require('fs').readFileSync(path.join(__dirname, '..', 'public', 'js', 'config.js'), 'utf8');
-  new Function('window', 'console', 'localStorage', src)(fakeWin, console, {
-    getItem() { return null; }, setItem() {}, removeItem() {}
-  });
+  new Function('window', 'console', src)(fakeWin, console);
   const R = fakeWin.GameConfig._resolve;
 
   eq(R('', '', 'https:', 'https://a.b').url, 'https://a.b', '同源：直接用頁面自己的 origin');

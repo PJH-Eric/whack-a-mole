@@ -349,7 +349,7 @@ body{
   font-size:clamp(.6rem,1.7vmin,.95rem);font-weight:900;
   border:2.5px solid var(--ink);border-radius:999px;padding:1px 7px;
   background:var(--mint);line-height:1.3;white-space:nowrap;
-  opacity:0;transform:scale(.7);transition:opacity .12s,transform .12s;
+  opacity:0;transform:scale(.7);transition:transform .12s;
 }
 .mole-badge.on{opacity:1;transform:scale(1)}
 /* 好人的標記用紅色底＋「−」，壞人用綠色底＋「+」：不只靠顏色分辨 */
@@ -427,7 +427,7 @@ body{
   z-index:12;flex-direction:column;gap:7px}
 .side-fab .iconbtn{box-shadow:0 3px 0 rgba(74,59,85,.25)}
 
-/* ---------- 彈窗（設定、邀請） ---------- */
+/* ---------- 彈窗（設定、邀請、確認） ---------- */
 .modal{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:14px}
 .modal-mask{position:absolute;inset:0;background:rgba(74,59,85,.45)}
 .modal-card{
@@ -439,23 +439,20 @@ body{
 .modal-head h3{margin:0;flex:1;font-size:1.12rem}
 .modal-body{padding:12px 14px;overflow-y:auto;flex:1}
 .modal-foot{display:flex;gap:9px;justify-content:flex-end;padding:10px 14px;border-top:2.5px solid var(--line);flex-wrap:wrap}
+.confirm-card{width:min(100%,420px)}
+.confirm-message{margin:0;line-height:1.7}
 .setrow{display:flex;align-items:center;gap:12px;padding:8px 0;flex-wrap:wrap}
 .setrow label{flex:1;min-width:130px;font-size:.94rem;font-weight:700}
 .setrow label small{display:block;font-weight:600;font-size:.74rem;color:var(--ink-soft)}
 .setrow input[type=range]{flex:1 1 130px;min-width:120px;accent-color:var(--grape-d);height:30px}
 .switch{appearance:none;-webkit-appearance:none;width:56px;height:32px;border:3px solid var(--ink);
   border-radius:999px;background:var(--cream-d);position:relative;cursor:pointer;flex:0 0 auto;margin:0}
-.switch::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
-  background:var(--paper);border:2.5px solid var(--ink);transition:left .16s}
+.switch::after{content:"";position:absolute;top:50%;left:2px;width:22px;height:22px;border-radius:50%;
+  background:var(--paper);border:2.5px solid var(--ink);transform:translateY(-50%);transition:left .16s}
 .switch:checked{background:var(--mint)}
 .switch:checked::after{left:26px}
 .switch:focus-visible{outline:3px solid var(--sky-d);outline-offset:2px}
 .sep{border:0;border-top:2.5px dashed var(--line);margin:10px 0}
-.setrow.stack{flex-direction:column;align-items:stretch;gap:7px}
-.setrow.stack label{min-width:0}
-.serverbox{display:flex;gap:7px;align-items:center}
-.serverbox .field{font-size:.85rem;padding:9px 11px;border-width:2.5px;border-radius:13px}
-.serverbox .btn3d{flex:0 0 auto;--d:5px;min-height:42px;white-space:nowrap}
 .setinfo{font-size:.8rem;color:var(--ink-soft);margin:6px 0;line-height:1.6;word-break:break-all}
 .invite-out{display:flex;gap:7px;margin-top:10px;align-items:center}
 .invite-out .field{font-size:.8rem;padding:9px 11px}

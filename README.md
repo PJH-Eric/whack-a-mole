@@ -125,8 +125,8 @@ npm start           # http://localhost:3030
 - **右上角**永遠有 ⚙ 設定按鈕（在安全區內，不會遮住遊戲控制），按下去開 Modal 彈窗。
 
 設定彈窗裡有：背景音樂、音樂音量、遊戲音效、音效音量、聊天提示音、震動回饋、
-減少動態、分數標記放大、**遊戲伺服器位址**、恢復預設。
-所有設定存在這台裝置的 localStorage，重新載入後仍保留。
+減少動態、分數標記放大、恢復預設。
+遊戲偏好設定存在這台裝置的 localStorage，重新載入後仍保留。
 
 音樂與音效都是 Web Audio 即時合成，**沒有任何外部音檔**，所以不會有授權問題也不會載入失敗。
 要換成正式音檔時，只要保留 `Sound.play / startBgm / stopBgm` 這幾個介面即可。
@@ -204,16 +204,15 @@ GitHub Pages 只能放靜態檔案，**跑不動 `server.js`**。所以架構是
 也可以到 **Actions → 佈署前端到 GitHub Pages → Run workflow**，
 在欄位裡臨時填一個不同的伺服器網址（測 staging 用），不會動到 repo 變數。
 
-### 伺服器位址的三條路（優先序由高到低）
+### 伺服器位址的設定方式（優先序由高到低）
 
 `public/js/config.js` 是**全站唯一**的連線設定入口，`app.js`、`online.js`、測試都不准自己寫死網址。
 
 | 優先序 | 方式 | 什麼時候用 |
 |---|---|---|
 | 1 | 網址參數 `?server=https://xxx.onrender.com` | 臨時測 staging、跨電腦除錯 |
-| 2 | 玩家在 **⚙ 設定 → 遊戲伺服器位址** 自己填 | 你還沒設 repo 變數，或玩家要連自架伺服器 |
-| 3 | 建置注入（GitHub Actions 用 `GAME_SERVER_URL`） | **正式用這個** |
-| 4 | 同源（頁面本身就是伺服器送出來的） | 本機 `npm start` |
+| 2 | 建置注入（GitHub Actions 用 `GAME_SERVER_URL`） | **正式用這個** |
+| 3 | 同源（頁面本身就是伺服器送出來的） | 本機 `npm start` |
 
 格式檢查是硬的：只接受 `http`／`https` 的絕對網址，`https` 頁面不接受 `http` 伺服器
 （混合內容會被瀏覽器擋掉），格式不對就停用線上功能並顯示原因，
@@ -243,8 +242,11 @@ node scripts/inject-server-url.js --clear                              # 還原�
 ```bash
 npm test              # 規則單元測試（177 項，不用開伺服器）
 npm run test:online   # 線上流程實測（67 項，真的開伺服器 + 多個 socket 用戶端）
+npm run test:leave    # 離開確認流程（遊戲內視窗、確認後立即回首頁）
+npm run test:board    # 各裝置盤面列欄與選項一致性
+npm run test:sync     # 地鼠本體與分數標記出現／消失同步
 npm run test:browser  # 版面與流程實測（227 項，需要 playwright）
-npm run verify        # 三個一起跑
+npm run verify        # 六個一起跑
 ```
 
 `npm run test:browser` 需要先裝瀏覽器：
@@ -290,6 +292,9 @@ whack-a-mole/
 ├─ scripts/
 │  ├─ inject-server-url.js   把 server URL 寫進 config.js
 │  ├─ online-check.js        線上流程實測
+│  ├─ leave-check.js         離開確認流程實測
+│  ├─ board-check.js         各裝置盤面一致性實測
+│  ├─ sync-check.js          地鼠與分數標記同步實測
 │  └─ browser-check.js       版面與流程實測（Playwright）
 ├─ tests/verify.js           規則單元測試
 ├─ .github/workflows/        CI + GitHub Pages 自動佈署

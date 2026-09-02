@@ -317,23 +317,30 @@
           <label for="set-hammer">鐵鎚滑鼠游標<small>對局時把滑鼠變成小槌子，觸控裝置沒有影響</small></label>
           <input type="checkbox" id="set-hammer" class="switch">
         </div>
-        <hr class="sep">
-        <div class="setrow stack">
-          <label for="set-server-url">遊戲伺服器位址
-            <small>把前端放在 GitHub Pages 之類的地方時，在這裡填 Render 上的伺服器網址。留空代表用預設值。</small>
-          </label>
-          <div class="serverbox">
-            <input class="field" id="set-server-url" type="url" inputmode="url" spellcheck="false"
-                   placeholder="https://your-app.onrender.com" aria-describedby="set-server">
-            <button class="btn3d small" data-color="mint" id="b-server-save" type="button">存並重載</button>
-          </div>
-        </div>
-        <p class="setinfo">目前使用：<span id="set-server">—</span></p>
         <p class="setinfo" id="set-audio-note"></p>
       </div>
       <div class="modal-foot">
         <button class="btn3d small" data-color="cream" id="b-settings-reset">恢復預設</button>
         <button class="btn3d small" data-color="mint" id="b-settings-ok">完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================== 遊戲內確認彈窗 ============================== -->
+  <div class="modal" id="confirm-modal" role="dialog" aria-modal="true"
+       aria-labelledby="confirm-title" aria-describedby="confirm-message" hidden>
+    <div class="modal-mask" data-close-modal></div>
+    <div class="modal-card confirm-card" role="document">
+      <div class="modal-head">
+        <h3 id="confirm-title">請確認</h3>
+        <button class="iconbtn" id="b-confirm-close" type="button" aria-label="取消">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-message" id="confirm-message"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn3d small" data-color="cream" id="b-confirm-cancel" type="button">取消</button>
+        <button class="btn3d small" data-color="mint" id="b-confirm-ok" type="button">確定</button>
       </div>
     </div>
   </div>

@@ -4,10 +4,9 @@
 # 所以線上對戰的架構是：
 #     前端 GitHub Pages  ──（WebSocket / HTTPS）──>  伺服器 Render
 #
-# 要讓 Pages 上的前端知道伺服器在哪，有三條路（優先序由高到低）：
+# 要讓 Pages 上的前端知道伺服器在哪，有兩條路（優先序由高到低）：
 #   1. 網址參數：https://你的帳號.github.io/whack-a-mole/?server=https://xxx.onrender.com
-#   2. 玩家自己在遊戲的「⚙ 設定」裡填伺服器位址（存在他自己的瀏覽器）
-#   3. 建置注入：這個 workflow 會把 repo 變數 GAME_SERVER_URL 寫進 config.js（推薦）
+#   2. 建置注入：這個 workflow 會把 repo 變數 GAME_SERVER_URL 寫進 config.js（推薦）
 #
 # 設定方式：
 #   GitHub repo → Settings → Secrets and variables → Actions → Variables →
@@ -57,7 +56,7 @@ jobs:
           GAME_SERVER_URL: ${{ inputs.server_url || vars.GAME_SERVER_URL }}
         run: |
           if [ -z "$GAME_SERVER_URL" ]; then
-            echo "::warning::沒有設定 GAME_SERVER_URL；佈署出去的頁面預設只能玩單機，玩家仍可在遊戲設定裡自己填伺服器位址。"
+            echo "::warning::沒有設定 GAME_SERVER_URL；佈署出去的頁面預設只能玩單機，請設定變數後重新佈署。"
             node scripts/inject-server-url.js --clear
           else
             node scripts/inject-server-url.js "$GAME_SERVER_URL"
