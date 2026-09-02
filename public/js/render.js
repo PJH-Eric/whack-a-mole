@@ -247,10 +247,6 @@
     n.className = cls;
     if (o.color) n.style.setProperty('--who', o.color);
     n.textContent = text;
-    n.dataset.hole = String(ev.hole);
-    /* 同一個洞連續兩槌時，舊的字先收掉：兩層字疊在一起誰都看不懂 */
-    var stale = fx.querySelectorAll('.flyscore[data-hole="' + ev.hole + '"]');
-    for (var i = 0; i < stale.length; i++) stale[i].parentNode.removeChild(stale[i]);
     var r = rec.el.getBoundingClientRect();
     var f = fx.getBoundingClientRect();
     n.style.left = (r.left - f.left + r.width / 2) + 'px';
@@ -262,9 +258,6 @@
   /** 中央大字：倒數、階段提示、連擊里程碑 */
   function shout(text, cls, ms) {
     if (!fx) return;
-    /* 中央同時只留一句話：階段提示和連擊里程碑常常一起來，疊起來會糊成一團 */
-    var stale = fx.querySelectorAll('.shout');
-    for (var i = 0; i < stale.length; i++) stale[i].parentNode.removeChild(stale[i]);
     var n = document.createElement('div');
     n.className = 'shout ' + (cls || '');
     n.textContent = text;

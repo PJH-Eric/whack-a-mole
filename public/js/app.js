@@ -430,27 +430,9 @@
     return null;
   }
 
-  /* 還沒開打（線上房間等待中）的 HUD：秒數要顯示這一局實際會有多長，
-     不能留著 HTML 裡的預設值騙人。 */
-  function paintIdleHud() {
-    var v = S.view;
-    var sec = v && v.roundSec ? v.roundSec : Rules.roundSecOf(Store.roundSec());
-    $('hud-clock').textContent = sec;
-    $('hud-time').classList.remove('low');
-    $('hud-stage').textContent = '準備中';
-    $('hud-stage').className = 'hud-stage';
-    $('hud-score').textContent = '0';
-    $('hud-combo').hidden = true;
-    $('hud-buff').hidden = true;
-    $('timebar-fill').style.width = '100%';
-    $('timebar-fill').className = '';
-    $('countdown').hidden = true;
-  }
-
   function paintHud() {
     var m = S.match;
-    if (!m) { paintIdleHud(); return; }
-    var over = m.phase === 'over';
+    if (!m) return;
     var sec = Math.ceil(m.remainMs / 1000);
     var clock = $('hud-clock');
     if (clock.textContent !== String(sec)) clock.textContent = sec;
@@ -458,8 +440,8 @@
     if (m.phase === 'playing' && sec <= 10 && !S.warned) { S.warned = true; Sound.play('warn'); }
 
     var st = $('hud-stage');
-    st.textContent = over ? '時間到' : '第 ' + m.stage.no + ' 階段・' + m.stage.label;
-    st.className = 'hud-stage' + (!over && m.stage.no > 1 ? ' s' + m.stage.no : '');
+    st.textContent = '第 ' + m.stage.no + ' 階段・' + m.stage.label;
+    st.className = 'hud-stage' + (m.stage.no > 1 ? ' s' + m.stage.no : '');
     if (m.phase === 'playing' && m.stage.no !== S.lastStage) {
       if (S.lastStage) { Sound.play('stage'); Board.shout(m.stage.label + '！地鼠變快了', 'stage', 1100); }
       S.lastStage = m.stage.no;
@@ -472,7 +454,7 @@
     var me = myRow();
     $('hud-score').textContent = me ? me.score : 0;
     var cb = $('hud-combo');
-    if (!over && me && me.combo >= 2) { cb.hidden = false; $('hud-combo-n').textContent = me.combo; }
+    if (me && me.combo >= 2) { cb.hidden = false; $('hud-combo-n').textContent = me.combo; }
     else cb.hidden = true;
 
     /* 倒數 */
@@ -486,47 +468,9 @@
     }
   }
 
-  /* 線上房間還在等待時，摘要頁本來是空白的一格虛線框。
-     房號、身分、座位、這一局的設定和目前有誰，全部先列出來，
-     手機從抽屜看也一樣清楚。 */
-  function paintLobbySummary() {
-    var v = S.view;
-    if (S.mode !== 'online' || !v) return;
-    var you = v.you;
-    var role = you.role === 'player' ? '玩家' : (you.role === 'spectator' ? '觀戰' : '訪客');
-    $('sum-room').innerHTML = '<b>' + esc(v.code) + '</b>　' + role + (you.host ? '・房主' : '')
-      + '　' + (v.seats - v.seatsFree) + '/' + v.seats + ' 人';
-
-    var rows = [];
-    v.members.filter(function (mm) { return mm.role === 'player'; }).forEach(function (mm, i) {
-      rows.push({
-        name: mm.name, hex: colorHex(Rules.PLAYER_COLORS[i % 5]), me: mm.id === you.id,
-        tag: mm.connected === false ? '斷線' : (mm.ready ? '準備好' : '還沒準備')
-      });
-    });
-    (v.ai || []).forEach(function (a) { rows.push({ name: a.name, hex: '#C8BFD1', tag: '電腦' }); });
-    v.members.filter(function (mm) { return mm.role === 'spectator'; }).forEach(function (mm) {
-      rows.push({ name: mm.name, hex: '#C8BFD1', me: mm.id === you.id, tag: '觀戰' });
-    });
-    $('rank-list').innerHTML = rows.map(function (r, i) {
-      return '<li class="rankrow' + (r.me ? ' me' : '') + '" style="--who:' + r.hex + '">'
-        + '<span class="no">' + (i + 1) + '</span>'
-        + '<span class="nm">' + esc(r.name) + '</span>'
-        + '<span class="sc"><small>' + esc(r.tag) + '</small></span>'
-        + '</li>';
-    }).join('');
-
-    var bd = Rules.boardOf(v.board);
-    $('my-stat').textContent = '一局 ' + v.roundSec + ' 秒・難度「' + Rules.paceOf(v.pace).label
-      + '」・盤面 ' + bd.label + '（' + bd.holes + ' 洞）';
-    $('live-bar').innerHTML = '';
-    $('live-bar').dataset.html = '';
-    paintSideActions();
-  }
-
   function paintSummary() {
     var m = S.match;
-    if (!m) { paintLobbySummary(); return; }
+    if (!m) return;
 
     /* 一行帶完房間／模式資訊 */
     var room = $('sum-room');
@@ -551,17 +495,6 @@
         + '</li>';
     }).join('');
 
-    /* 窄版（手機、平板直向）盤面等比縮放後周圍會留白，把即時排行貼在那裡：
-       打到一半不用開抽屜也知道誰領先。寬版有固定側欄，CSS 會把它藏起來。 */
-    var lb = $('live-bar');
-    var lbHtml = m.standings.length > 1
-      ? m.standings.slice(0, 5).map(function (p) {
-        return '<span class="lchip' + (p.id === me ? ' me' : '') + '" style="--who:' + colorHex(p.color) + '">'
-          + '<b>' + p.rank + '</b><span class="ln">' + esc(p.name) + '</span><i>' + p.score + '</i></span>';
-      }).join('')
-      : '';
-    if (lb.dataset.html !== lbHtml) { lb.dataset.html = lbHtml; lb.innerHTML = lbHtml; }
-
     /* 我的表現：一行就好，分數已經在 HUD 上了 */
     var r = myRow();
     $('my-stat').textContent = r
@@ -571,7 +504,7 @@
 
     /* 彩虹加倍剩餘時間顯示在 HUD 上 */
     var refNow = S.mode === 'solo' ? Date.now() : srvNow();
-    var buffLeft = m.phase === 'playing' && r && r.buffUntil ? Math.max(0, r.buffUntil - refNow) : 0;
+    var buffLeft = r && r.buffUntil ? Math.max(0, r.buffUntil - refNow) : 0;
     $('hud-buff').hidden = buffLeft <= 0;
     if (buffLeft > 0) $('hud-buff').textContent = '🌈 加倍中 ' + Math.ceil(buffLeft / 1000) + 's';
 
@@ -729,9 +662,6 @@
           + v.rematch.votes + '/' + v.rematch.need + '）</button>';
       }
       if (v.you.can.reset) btns += '<button class="btn3d" data-color="sky" data-act="reset">回房間調整</button>';
-      /* 觀戰的人看完結算最想做的事就是下場打下一局，按鈕直接放在這裡 */
-      if (v.you.can.sit) btns += '<button class="btn3d" data-color="mint" data-act="sit">下場對戰</button>';
-      if (v.you.can.stand) btns += '<button class="btn3d" data-color="cream" data-act="stand">改成觀戰</button>';
       btns += '<button class="btn3d" data-color="cream" data-act="quit">離開房間</button>';
     }
     $('ov-result-btns').innerHTML = btns;
@@ -1003,14 +933,8 @@
 
   function doAction(act) {
     if (act === 'quit') {
-      /* 打到一半誤觸「離開」很痛，單機和線上都先問一句 */
-      var live = S.mode === 'online'
-        ? !!(S.view && S.view.phase === 'playing' && S.view.you.role === 'player')
-        : !!(S.match && S.match.phase === 'playing');
-      if (live) {
-        askConfirm('離開這一局？', S.mode === 'online'
-          ? '這一局還沒打完，你的分數會留在排行榜上。'
-          : '這一局還沒打完，離開就不會計入戰績。', leaveGame);
+      if (S.mode === 'online' && S.view && S.view.phase === 'playing' && S.view.you.role === 'player') {
+        askConfirm('離開這一局？', '這一局還沒打完，你的分數會留在排行榜上。', leaveGame);
         return;
       }
       leaveGame();

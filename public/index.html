@@ -66,7 +66,7 @@
 
       <h3 class="lbl">盤面大小</h3>
       <div class="cardpick tight" id="opt-board" role="radiogroup" aria-label="盤面大小"></div>
-      <p class="hint">洞愈多，同時冒出來的地鼠也愈多、冒得愈快。選幾乘幾就是幾乘幾，手機、平板、桌機都一樣，只有盤面大小會自動縮放。</p>
+      <p class="hint">洞愈多，同時冒出來的地鼠也愈多、冒得愈快。實際排成幾乘幾會依裝置的畫面形狀自動挑，轉向也會跟著換。</p>
 
       <p class="note">單機和線上用的是同一套規則與同一套電腦對手程式，練熟了直接上線打。</p>
       <div class="panel-foot">
@@ -163,7 +163,7 @@
           <button class="iconbtn hud-back" id="b-quit" type="button" title="離開這一局" aria-label="離開這一局">◀</button>
           <div class="hud-time" id="hud-time">
             <span class="hud-lbl">剩餘</span>
-            <b id="hud-clock">60</b>
+            <b id="hud-clock">90</b>
             <span class="hud-unit">秒</span>
           </div>
           <div class="hud-stage" id="hud-stage">熱身</div>
@@ -180,10 +180,6 @@
         <div class="board-wrap" id="board-wrap">
           <div class="board" id="board"></div>
           <div class="fx" id="fx" aria-hidden="true"></div>
-
-          <!-- 窄版把即時排行貼在盤面周圍的空白處：手機不用開抽屜也看得到誰領先。
-               內容和側欄的排行一樣，所以對螢幕閱讀器隱藏，不重複唸一次。 -->
-          <div class="livebar" id="live-bar" aria-hidden="true"></div>
 
           <!-- 等待／準備／結算都用蓋在盤面上的浮層，不另外換路由 -->
           <div class="overlay" id="ov-wait" hidden>
