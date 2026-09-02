@@ -196,6 +196,7 @@ io.on('connection', (socket) => {
       name: socket.data.name,
       roomName: p.roomName,
       private: !!p.private,
+      board: p.board,
       now: now()
     });
     if (!res.ok) { fail(socket, res.error, res.code); if (typeof ack === 'function') ack(res); return; }
@@ -297,6 +298,13 @@ io.on('connection', (socket) => {
     const res = room.removeAi(socket.data.clientId, String(p.id || ''));
     if (!res.ok) return fail(socket, res.error, res.code);
     room.system('移除了電腦對手 ' + res.seat.name + '。', now());
+    syncRoom(room); syncLobby();
+  }));
+
+  socket.on('room:setBoard', withRoom((room, p) => {
+    const res = room.setBoard(socket.data.clientId, String(p.board || ''));
+    if (!res.ok) return fail(socket, res.error, res.code);
+    if (res.changed) room.system('盤面改成 ' + res.label + '（' + res.holes + ' 個地洞）。', now());
     syncRoom(room); syncLobby();
   }));
 

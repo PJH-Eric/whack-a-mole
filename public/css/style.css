@@ -292,26 +292,51 @@ body{
   background:linear-gradient(180deg,#E7F5DA 0%,#CFE9BC 62%,#BFE0AB 100%);
   box-shadow:inset 0 4px 0 rgba(255,255,255,.6);
   overflow:hidden;
+  /* 讓盤面能用 cqw/cqh 算出「等比塞得進去的最大尺寸」 */
+  container-type:size;
 }
 .board{
-  --gc:4;--gr:3;
+  /* --bc / --br 由 render.js 寫入：洞數是規則決定的，怎麼排則是看可用空間的形狀
+     （見 render.js 的 arrange()）。排法只是版面，地洞編號不受影響。 */
+  --bc:4;--br:3;
+  --gc:var(--bc);--gr:var(--br);
+  --ar:calc(var(--gc) / var(--gr) * 1.06);
   display:grid;
   grid-template-columns:repeat(var(--gc),1fr);
   grid-template-rows:repeat(var(--gr),1fr);
   gap:clamp(4px,1.1vmin,14px);
-  width:100%;height:auto;max-height:100%;
-  aspect-ratio:calc(var(--gc) / var(--gr) * 1.06);
+  aspect-ratio:var(--ar);
+  width:100%;max-width:100%;max-height:100%;
+}
+/* 等比塞進可用空間：寬度取「容器寬」與「容器高 × 長寬比」的小者。
+   只寫 width:100% + max-height 的話，高度被夾住時寬度不會跟著縮，
+   格子會被壓成又寬又扁（手機橫向曾經壓到 2.09:1），地鼠也跟著被切頭。 */
+@supports (width:1cqw){
+  .board{width:min(100cqw,calc(100cqh * var(--ar)))}
 }
 .hole{
   position:relative;overflow:hidden;border:0;padding:0;margin:0;background:none;
   cursor:pointer;border-radius:16px;touch-action:manipulation;
 }
 .hole:focus-visible{outline:3px solid var(--sky-d);outline-offset:2px}
+/* 可愛鐵鎚游標：只在真的有滑鼠的裝置上換掉。觸控裝置沒有游標，換了也看不到，
+   而且手指按住時瀏覽器有時會把它畫出來擋住地鼠。--cur-hammer 由 app.js 從
+   SvgUI 產生，槌子的造型只有一份。 */
+@media (hover:hover) and (pointer:fine){
+  body.hammer-cursor #s-game.active .board-wrap,
+  body.hammer-cursor #s-game.active .hole{cursor:var(--cur-hammer,pointer)}
+  body.hammer-cursor #s-game.active .board-wrap:active,
+  body.hammer-cursor #s-game.active .hole:active{cursor:var(--cur-hammer-hit,pointer)}
+}
 .hole-back,.hole-front{position:absolute;left:0;bottom:0;width:100%;height:100%;pointer-events:none}
 .hole-front{z-index:3}
 .mole-clip{position:absolute;left:0;right:0;top:0;bottom:28%;overflow:hidden;z-index:2;pointer-events:none}
+/* 地鼠的大小要跟著「看得到的那扇窗」(.mole-clip) 的高度走，不能用地洞寬度。
+   以前是 width:82% 的地洞寬 + aspect-ratio:1，只要地洞比 0.88:1 寬，
+   地鼠就會比窗高，頭直接被 overflow:hidden 切掉 —— 每一種裝置都中招。
+   現在高度鎖成窗高，內層 SVG 自己 meet-fit 置中，不管地洞多扁都完整。 */
 .mole-slot{
-  position:absolute;left:9%;right:9%;bottom:-2%;aspect-ratio:1;
+  position:absolute;left:0;right:0;bottom:0;height:100%;
   transform:translateY(105%);opacity:0;will-change:transform;
 }
 .mole-slot .mole-svg{width:100%;height:100%;display:block;overflow:visible}
@@ -467,7 +492,6 @@ body{
   .side-fab{display:flex}
   .stage{padding-left:calc(8px + var(--safe-l))}
   .hud{padding-left:0}
-  .board{--gc:3;--gr:4;aspect-ratio:calc(var(--gc) / var(--gr) * 1.04)}
   .board-wrap{padding-bottom:4px}
 }
 
@@ -478,7 +502,6 @@ body{
   .hud-time,.hud-score{padding:2px 9px;min-width:64px}
   .hud-stage,.hud-combo,.hud-buff{padding:3px 10px;font-size:.78rem}
   .timebar{height:7px;margin:1px 0 4px}
-  .board{--gc:4;--gr:3;aspect-ratio:calc(var(--gc) / var(--gr) * 1.06)}
   .settings-fab{--d:4px;min-width:42px;min-height:42px;padding:6px 8px calc(6px + var(--d))}
   .hud{padding-right:54px}
 }

@@ -13,6 +13,8 @@
  *   C. 單機完整一局：設定 → 開打 → 敲地鼠 → 結算 → 再玩一次。
  *   D. 設定彈窗：開啟、焦點鎖定、Escape 關閉、焦點歸位、靜音設定重新載入後仍保留。
  *   E. 左側摘要與聊天室：寬版固定顯示、窄版抽屜可開合，都不遮住盤面。
+ *   G. 每種盤面大小（幾乘幾）：洞數、排法、命中區、不溢出、地鼠不被切到頭。
+ *   H. 鐵鎚滑鼠游標：預設開、對局中真的套用、設定關得掉。
  *   F. 線上 UI：三個分頁（房主、玩家、觀戰）走完建房 → 邀請連結 → 準備 → 開打 →
  *      搶打 → 摘要更新 → 聊天，並確認觀戰者真的沒有出手權限。
  *
@@ -131,6 +133,32 @@ const LAYOUT_PROBE = `(() => {
     out.info.holes = holes.length;
     const h0 = holes[0] && holes[0].getBoundingClientRect();
     if (h0 && (h0.width < 44 || h0.height < 44)) out.problems.push('地洞命中區太小 ' + Math.round(h0.width) + '×' + Math.round(h0.height));
+  /* 地鼠冒出來時不可以被切到：地鼠槽必須完整落在可視窗 (.mole-clip) 裡。
+     以前地鼠是照「地洞寬度」算大小的，只要地洞比 0.88:1 寬，頭就會被切掉，
+     而每一種裝置的地洞都比那個寬 —— 所以每台都中招。 */
+  const upMoles = [...board.querySelectorAll('.hole')].filter((h) => {
+    const s = h.querySelector('.mole-slot');
+    return s.classList.contains('up') && getComputedStyle(s).opacity !== '0';
+  });
+  out.info.molesUp = upMoles.length;
+  for (const hole of upMoles) {
+    const slot = hole.querySelector('.mole-slot').getBoundingClientRect();
+    const clip = hole.querySelector('.mole-clip').getBoundingClientRect();
+    if (slot.height > clip.height + 1) {
+      out.problems.push('地鼠比可視窗高 ' + Math.round(slot.height - clip.height) + 'px（頭會被切掉）');
+      break;
+    }
+    if (slot.width > hole.getBoundingClientRect().width + 1) {
+      out.problems.push('地鼠比地洞寬 ' + Math.round(slot.width - hole.getBoundingClientRect().width) + 'px');
+      break;
+    }
+  }
+
+  /* 格子不可以被壓成太扁或太瘦：地洞的圖是等比縮放的，格子一失衡就會留下大片空白 */
+  const cellAr = h0 ? h0.width / h0.height : 1;
+  out.info.cellAr = +cellAr.toFixed(2);
+  if (h0 && cellAr > 1.45 || cellAr < 0.75) out.problems.push('地洞格子比例失衡 ' + cellAr.toFixed(2) + ':1');
+
     // 側欄不可以蓋住盤面
     const side = document.getElementById('side');
     const sr = side.getBoundingClientRect();
@@ -357,6 +385,130 @@ async function main() {
     await page.click('#b-server-save');
     await sleep(400);
     ok(await page.$eval('#toast', (e) => !e.hidden && e.textContent.indexOf('網址') >= 0), '亂填的伺服器位址會被擋下');
+    await ctx.close();
+  }
+
+  /* ---------------------------------------------- E. 盤面大小與鐵鎚游標 */
+  group('盤面大小（幾乘幾可設定）');
+  {
+    /* 依實際使用情境排：平板 > 桌機 > 手機 */
+    const cases = [VIEWPORTS[0], VIEWPORTS[1], VIEWPORTS[4], VIEWPORTS[6], VIEWPORTS[7]];
+    for (const vp of cases) {
+      const { ctx, page } = await newPage(vp);
+      await page.goto(BASE, { waitUntil: 'networkidle' });
+      await page.click('#b-solo');
+      await sleep(200);
+
+      const keys = await page.$$eval('#opt-board .pickcard', (bs) => bs.map((b) => b.dataset.v));
+      ok(keys.length >= 3, vp.label + ' 單機設定看得到盤面選項', keys.join(','));
+
+      for (const key of keys) {
+        await page.click('#opt-board [data-v="' + key + '"]');
+        await sleep(120);
+        await page.click('#b-solo-start');
+        await sleep(900);
+
+        const m = await page.evaluate(() => {
+          const board = document.getElementById('board');
+          const wrap = document.getElementById('board-wrap');
+          const br = board.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+          const hs = [...board.querySelectorAll('.hole')];
+          const h = hs[0].getBoundingClientRect();
+          const cs = getComputedStyle(board);
+          return {
+            holes: hs.length,
+            cols: cs.getPropertyValue('--bc').trim(),
+            rows: cs.getPropertyValue('--br').trim(),
+            cellAr: h.width / h.height,
+            hitW: h.width, hitH: h.height,
+            overW: br.width - wr.width, overH: br.height - wr.height,
+            fill: Math.max(br.width / wr.width, br.height / wr.height),
+            docOver: document.documentElement.scrollWidth - window.innerWidth
+          };
+        });
+        const tag = vp.label + ' / ' + key;
+        const want = Number(key.split('x')[0]) * Number(key.split('x')[1]);
+        ok(m.holes === want, tag + ' 地洞數正確', 'got ' + m.holes + ' want ' + want);
+        ok(Number(m.cols) * Number(m.rows) === want, tag + ' 排法乘起來等於洞數',
+          m.cols + '×' + m.rows);
+        ok(m.overW <= 1 && m.overH <= 1, tag + ' 盤面沒有超出可用空間',
+          '寬超 ' + Math.round(m.overW) + ' 高超 ' + Math.round(m.overH));
+        ok(m.docOver <= 1, tag + ' 頁面沒有水平溢出');
+        ok(m.cellAr <= 1.45 && m.cellAr >= 0.75, tag + ' 格子比例沒有失衡', m.cellAr.toFixed(2));
+        ok(m.fill > 0.8, tag + ' 盤面有吃滿可用空間', Math.round(m.fill * 100) + '%');
+        ok(m.hitW >= 44 && m.hitH >= 44, tag + ' 地洞命中區仍 ≥44px',
+          Math.round(m.hitW) + '×' + Math.round(m.hitH));
+
+        /* 冒出來的地鼠不可以被切到 */
+        let clipped = null;
+        for (let i = 0; i < 20 && clipped === null; i++) {
+          clipped = await page.evaluate(() => {
+            const ups = [...document.querySelectorAll('.hole')].filter((h) => {
+              const s = h.querySelector('.mole-slot');
+              return s.classList.contains('up') && getComputedStyle(s).opacity !== '0';
+            });
+            if (!ups.length) return null;
+            let worst = 0;
+            for (const h of ups) {
+              const s = h.querySelector('.mole-slot').getBoundingClientRect();
+              const c = h.querySelector('.mole-clip').getBoundingClientRect();
+              worst = Math.max(worst, s.height - c.height);
+            }
+            return worst;
+          });
+          if (clipped === null) await sleep(280);
+        }
+        ok(clipped !== null, tag + ' 這一局真的有地鼠冒出來');
+        if (clipped !== null) ok(clipped <= 1, tag + ' 地鼠沒有被切到頭', '超出 ' + Math.round(clipped) + 'px');
+
+        if (key === keys[keys.length - 1]) {
+          await page.screenshot({ path: path.join(SHOTS, 'board-' + vp.key + '-' + key + '.png') });
+        }
+        await page.evaluate(() => document.getElementById('b-quit').click());
+        await sleep(260);
+        await page.click('#b-solo');
+        await sleep(180);
+      }
+      await ctx.close();
+    }
+  }
+
+  group('鐵鎚滑鼠游標');
+  {
+    const { ctx, page } = await newPage(VIEWPORTS[4]);   // 桌機才有滑鼠
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+
+    const on = await page.evaluate(() => ({
+      body: document.body.classList.contains('hammer-cursor'),
+      cur: document.documentElement.style.getPropertyValue('--cur-hammer'),
+      hit: document.documentElement.style.getPropertyValue('--cur-hammer-hit')
+    }));
+    ok(on.body, '預設開啟鐵鎚游標');
+    ok(on.cur.indexOf('data:image/svg+xml') > 0, '游標是內嵌的 SVG 圖，不用外部檔案');
+    ok(/\)\s*\d+\s+\d+\s*,\s*\w+$/.test(on.cur.trim()), '游標有指定熱點與 fallback', on.cur.slice(-24));
+    ok(on.hit !== on.cur, '按下去有另一張甩下去的圖');
+
+    await page.click('#b-solo');
+    await sleep(180);
+    await page.click('#b-solo-start');
+    await sleep(700);
+    const applied = await page.evaluate(() => {
+      const h = document.querySelector('.hole');
+      return getComputedStyle(h).cursor;
+    });
+    ok(applied.indexOf('data:image/svg+xml') > 0, '對局中地洞真的套用了鐵鎚游標', applied.slice(0, 40));
+
+    /* 關掉之後要真的變回一般游標 */
+    await page.evaluate(() => document.getElementById('b-settings').click());
+    await sleep(260);
+    await page.evaluate(() => { const c = document.getElementById('set-hammer'); c.checked = false; c.dispatchEvent(new Event('change')); });
+    await sleep(200);
+    const off = await page.evaluate(() => ({
+      body: document.body.classList.contains('hammer-cursor'),
+      cursor: getComputedStyle(document.querySelector('.hole')).cursor
+    }));
+    ok(!off.body, '設定關掉後 body 上的旗標移除');
+    ok(off.cursor.indexOf('data:image') < 0, '關掉後不再是鐵鎚游標', off.cursor.slice(0, 30));
     await ctx.close();
   }
 

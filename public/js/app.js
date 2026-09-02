@@ -142,6 +142,7 @@
     $('set-sfx-vol').value = Math.round(Sound.getSfxVolume() * 100);
     $('set-motion').checked = Store.reduceMotion();
     $('set-mark').checked = Store.bigMark();
+    $('set-hammer').checked = Store.hammerCursor();
     $('set-server').textContent = Config.describe();
     $('set-server-url').value = Config.storedUrl ? Config.storedUrl() : '';
     $('set-audio-note').textContent = Sound.isUnlocked()
@@ -151,6 +152,20 @@
   function applyDisplayPrefs() {
     document.body.classList.toggle('reduce-motion', Store.reduceMotion());
     Board.setOptions({ reduceMotion: Store.reduceMotion(), bigMark: Store.bigMark() });
+    applyHammerCursor();
+  }
+
+  /* 鐵鎚游標的圖從 SvgUI 產生，寫成 CSS 變數讓樣式表去套。
+     觸控裝置的判斷交給 CSS 的 (hover:hover)，這裡只管開關與圖。 */
+  function applyHammerCursor() {
+    var on = Store.hammerCursor();
+    document.body.classList.toggle('hammer-cursor', on);
+    if (!on) return;
+    var root = document.documentElement.style;
+    if (!root.getPropertyValue('--cur-hammer')) {
+      root.setProperty('--cur-hammer', SvgUI.hammerCursor(false));
+      root.setProperty('--cur-hammer-hit', SvgUI.hammerCursor(true));
+    }
   }
 
   /* ============================================================
@@ -292,7 +307,7 @@
     S.mode = 'solo';
     S.clockOffset = 0;
     S.view = null;
-    S.solo.state = Rules.createMatch({ seed: seed, players: roster, now: now });
+    S.solo.state = Rules.createMatch({ seed: seed, players: roster, now: now, board: Store.board() });
     S.solo.rng = RNG.createRng('spawn:solo:' + seed);
     S.match = Rules.snapshot(S.solo.state, now);
     S.lastStage = 0; S.lastCombo = 0; S.warned = false;
@@ -343,6 +358,7 @@
 
   function enterGameScreen() {
     S.soloResultShown = false;
+    if (S.match) Board.setGrid(S.match);
     $('ov-result').hidden = true;
     $('ov-wait').hidden = true;
     Board.clear();
@@ -533,7 +549,23 @@
       SvgUI.decorateAll($('ai-add'));
     }
 
+    /* 盤面大小只有房主能改，其他人看得到目前設定（寫在下面的說明裡） */
+    /* 還沒開打時就先把空盤面換成房主選的尺寸，改了立刻看得到 */
+    Board.setGrid(Rules.boardOf(v.board));
+    $('board-manage').hidden = !v.you.can.setBoard;
+    if (v.you.can.setBoard) {
+      $('board-pick').innerHTML = (v.boards || []).map(function (b) {
+        var on = b.key === v.board;
+        return '<button class="btn3d" data-color="' + (on ? 'mint' : 'cream') + '"'
+          + ' data-setboard="' + esc(b.key) + '" role="radio" aria-checked="' + on + '">'
+          + esc(b.label) + '</button>';
+      }).join('');
+      SvgUI.decorateAll($('board-pick'));
+    }
+
     var note = [];
+    var bd = Rules.boardOf(v.board);
+    note.push('盤面 ' + bd.label + '（' + bd.holes + ' 個地洞）。');
     note.push('座位 ' + (v.seats - v.seatsFree) + '/' + v.seats + '，最多 ' + v.seats + ' 人共用同一組地洞。');
     if (v.you.role === 'spectator') note.push('你目前是觀戰身分。');
     if (v.you.startBlockedBy) note.push(v.you.startBlockedBy + '。');
@@ -848,7 +880,7 @@
   }
 
   document.addEventListener('click', function (e) {
-    var t = e.target.closest ? e.target.closest('[data-act],[data-back],[data-joincode],[data-addai],[data-rmai],[data-revoke],[data-copyinv],[data-close-modal],[data-pane]') : null;
+    var t = e.target.closest ? e.target.closest('[data-act],[data-back],[data-joincode],[data-addai],[data-rmai],[data-setboard],[data-revoke],[data-copyinv],[data-close-modal],[data-pane]') : null;
     if (!t) return;
     if (t.dataset.back) { show(t.dataset.back); Sound.play('click'); return; }
     if (t.dataset.act) { Sound.play('click'); doAction(t.dataset.act); return; }
@@ -856,6 +888,7 @@
     if (t.dataset.joincode) { Sound.play('click'); joinRoom(t.dataset.joincode); return; }
     if (t.dataset.addai) { Online.send('room:addAi', { level: t.dataset.addai }); return; }
     if (t.dataset.rmai) { Online.send('room:removeAi', { id: t.dataset.rmai }); return; }
+    if (t.dataset.setboard) { Sound.play('tick'); Online.send('room:setBoard', { board: t.dataset.setboard }); return; }
     if (t.dataset.revoke) { Online.send('room:revokeInvite', { token: t.dataset.revoke }); return; }
     if (t.dataset.copyinv) { copyText(Config.inviteUrl(S.view.code, t.dataset.copyinv)); return; }
     if (t.hasAttribute('data-close-modal')) { closeModal(t.closest('.modal').id); }
@@ -934,6 +967,7 @@
     $('set-sfx-vol').addEventListener('change', function () { Sound.setSfxVolume(this.value / 100); Sound.play('click'); });
     $('set-motion').addEventListener('change', function () { Store.reduceMotion(this.checked); applyDisplayPrefs(); });
     $('set-mark').addEventListener('change', function () { Store.bigMark(this.checked); applyDisplayPrefs(); });
+    $('set-hammer').addEventListener('change', function () { Store.hammerCursor(this.checked); applyDisplayPrefs(); });
     $('b-server-save').addEventListener('click', function () {
       var res = Config.setServerUrl($('set-server-url').value);
       if (!res.ok) return toast(res.error || '網址格式不對，請填完整的 https:// 網址。', 3600);
@@ -963,17 +997,20 @@
     });
 
     /* 選項卡片（單機難度／對手數量） */
-    ['opt-ai', 'opt-aicount'].forEach(function (id) {
+    ['opt-ai', 'opt-aicount', 'opt-board'].forEach(function (id) {
       $(id).addEventListener('click', function (e) {
         var c = e.target.closest('.pickcard');
         if (!c) return;
         els('.pickcard', this).forEach(function (x) { x.setAttribute('aria-checked', String(x === c)); });
-        if (id === 'opt-ai') Store.aiLevel(c.dataset.v); else Store.aiCount(c.dataset.v);
+        if (id === 'opt-ai') Store.aiLevel(c.dataset.v);
+        else if (id === 'opt-aicount') Store.aiCount(c.dataset.v);
+        else Store.board(c.dataset.v);
         Sound.play('tick');
       });
     });
 
-    w.addEventListener('resize', function () { SvgUI.repaintAll(); });
+    /* 轉向／改變視窗大小時，盤面重挑一次排法（洞數不變，只是換排列） */
+    w.addEventListener('resize', function () { SvgUI.repaintAll(); Board.relayout(); });
   }
 
   function paintSoloOptions() {
@@ -988,6 +1025,13 @@
     els('#opt-aicount .pickcard').forEach(function (c) {
       c.setAttribute('aria-checked', String(c.dataset.v === cnt));
     });
+
+    var bd = Rules.boardOf(Store.board()).key;
+    $('opt-board').innerHTML = Rules.BOARDS.map(function (b) {
+      return '<button class="pickcard" type="button" role="radio" data-v="' + b.key + '"'
+        + ' aria-checked="' + (b.key === bd) + '"><b>' + esc(b.label) + '</b><span>'
+        + esc(b.note) + '</span></button>';
+    }).join('');
   }
 
   function paintStats() {

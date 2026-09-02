@@ -16,17 +16,91 @@
   var onWhack = null;       // 玩家敲下去時的 callback
   var reduceMotion = false;
   var bigMark = true;
+  var grid = null;          // 目前畫出來的盤面尺寸 {cols, rows, holes}
+  var bound = false;        // 事件只綁一次（用委派，重建地洞不用重綁）
 
   /* ---------------------------------------------------------- 建立盤面 */
+
+  /* 一個格子理想的長寬比。地洞的圖是扁的，所以格子稍微寬一點點比較好看。 */
+  var CELL_AR = 1.06;
+
+  /**
+   * 洞數固定，挑一組最貼近「可用空間形狀」的排法。
+   *
+   * 以前這件事是寫死在 CSS media query 裡的（直向就 3×4、橫向就 4×3），
+   * 洞數一旦可以設定就不夠用了：手機橫向 844×390 硬排 4×3，盤面只佔得到
+   * 一半寬度，格子還會被壓扁。改成從所有「整除的排法」裡挑長寬比最接近的，
+   * 直向自動變高、手機橫向自動變寬，也不必再為每種盤面寫一條 media query。
+   */
+  function arrange(holes) {
+    var target = 4 / 3;
+    var wrap = board && board.parentElement;
+    if (wrap) {
+      var r = wrap.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) target = r.width / r.height;
+    }
+    var best = null;
+    for (var c = 2; c <= holes / 2; c++) {
+      if (holes % c) continue;
+      var rows = holes / c;
+      var ratio = (c / rows) * CELL_AR;
+      var waste = ratio > target ? ratio / target : target / ratio;
+      if (!best || waste < best.waste) best = { cols: c, rows: rows, waste: waste };
+    }
+    return best || { cols: holes, rows: 1 };
+  }
+
+  /** 視窗大小／方向變了就重挑排法（洞數不變，只是換個排列）。 */
+  function relayout() {
+    if (!board || !grid) return;
+    var a = arrange(grid.holes);
+    if (a.cols === grid.cols && a.rows === grid.rows) return;
+    grid.cols = a.cols; grid.rows = a.rows;
+    board.style.setProperty('--bc', String(a.cols));
+    board.style.setProperty('--br', String(a.rows));
+  }
+
+  /** 盤面尺寸可以是 Rules 的 board 物件、快照，或單純一個地洞數。 */
+  function normalizeGrid(g) {
+    if (typeof g === 'number') {
+      var b = Rules.boardOf(Rules.DEFAULT_BOARD);
+      return { cols: b.cols, rows: b.rows, holes: g || b.holes };
+    }
+    if (g && g.cols && g.rows) return { cols: g.cols, rows: g.rows, holes: g.holes || g.cols * g.rows };
+    var d = Rules.boardOf(g && g.board);
+    return { cols: d.cols, rows: d.rows, holes: d.holes };
+  }
 
   /**
    * @param {HTMLElement} el     盤面容器
    * @param {HTMLElement} fxEl   特效層
-   * @param {number} count       地洞數
+   * @param {object|number} g    盤面尺寸（{cols,rows,holes}、快照，或地洞數）
    * @param {function} cb        cb(holeIndex, moleId|null, domEvent)
    */
-  function mount(el, fxEl, count, cb) {
+  function mount(el, fxEl, g, cb) {
     board = el; fx = fxEl; onWhack = cb;
+    bindEvents();
+    grid = null;
+    setGrid(g);
+  }
+
+  /**
+   * 換盤面尺寸。尺寸沒變就什麼都不做 —— 每一幀都會呼叫，重建 DOM 會把動畫打斷。
+   * @returns {boolean} 有沒有真的重建
+   */
+  function setGrid(g) {
+    var n = normalizeGrid(g);
+    if (grid && grid.holes === n.holes) { relayout(); return false; }
+    var a = arrange(n.holes);
+    grid = { cols: a.cols, rows: a.rows, holes: n.holes };
+    /* --bc / --br 給 CSS 排格線用；洞的編號和排法無關，所以規則、AI、重播都不受影響 */
+    board.style.setProperty('--bc', String(a.cols));
+    board.style.setProperty('--br', String(a.rows));
+    build(n.holes);
+    return true;
+  }
+
+  function build(count) {
     holes = [];
     board.innerHTML = '';
     board.setAttribute('role', 'grid');
@@ -59,6 +133,14 @@
       holes.push(rec);
       board.appendChild(cell);
     }
+
+    board.classList.toggle('big-mark', bigMark);
+  }
+
+  /* 事件綁在盤面容器上做委派，所以換盤面尺寸重建地洞時不用重綁 */
+  function bindEvents() {
+    if (bound) return;
+    bound = true;
 
     /* pointerdown 而不是 click：打地鼠要「按下去就算」，慢半拍會被搶走 */
     board.addEventListener('pointerdown', function (e) {
@@ -95,6 +177,9 @@
    */
   function draw(snap, now) {
     if (!board || !snap) return;
+    /* 對局的盤面尺寸可能和目前畫出來的不一樣（線上房主改過、或換了單機設定）。
+       尺寸相同就是 no-op，不會每幀重建 DOM。 */
+    setGrid(snap);
     var byHole = {};
     var i, m;
     for (i = 0; i < snap.moles.length; i++) byHole[snap.moles[i].hole] = snap.moles[i];
@@ -222,6 +307,9 @@
 
   w.Board = {
     mount: mount,
+    setGrid: setGrid,
+    relayout: relayout,
+    grid: function () { return grid; },
     draw: draw,
     clear: clear,
     popEvent: popEvent,

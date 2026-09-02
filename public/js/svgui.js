@@ -363,6 +363,26 @@
       '</svg>';
   }
 
+  /* ---- 可愛鐵鎚滑鼠游標 ----
+   * 和命中特效同一支槌子，斜著拿。游標圖一定要有明確的 width/height
+   * （不能只給 viewBox），而且 Chrome 只吃 128px 以內，所以固定畫成 64px。
+   * 熱點放在槌頭中心：玩家覺得「打到的是槌頭」，不是滑鼠箭頭的尖端。
+   */
+  function hammerCursor(hit) {
+    var deg = hit ? 44 : 18;   // 按下去時多甩一點，像真的敲下去
+    var q = String.fromCharCode(34);
+    var svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 100 100">' +
+        '<g transform="translate(0,4) rotate(' + deg + ' 50 30)">' +
+          '<rect x="43" y="30" width="14" height="60" rx="7" fill="#C9A177" stroke="' + INK + '" stroke-width="5"/>' +
+          '<rect x="16" y="12" width="68" height="32" rx="13" fill="#FF8FA8" stroke="' + INK + '" stroke-width="5"/>' +
+          '<rect x="24" y="19" width="26" height="9" rx="4.5" fill="#fff" opacity=".55"/>' +
+        '</g>' +
+      '</svg>';
+    /* 32 21 = 槌頭中心換算到 64px 圖上的座標 */
+    return 'url(' + q + 'data:image/svg+xml,' + encodeURIComponent(svg) + q + ') 32 21, pointer';
+  }
+
   /* ---- 標題 LOGO ---- */
   function logo() {
     return '<svg viewBox="0 0 320 130" class="logo-svg" aria-hidden="true">' +
@@ -414,6 +434,7 @@
     holeBack: holeBack,
     holeFront: holeFront,
     hammer: hammer,
+    hammerCursor: hammerCursor,
     logo: logo,
     trophy: trophy,
     bgDeco: bgDeco

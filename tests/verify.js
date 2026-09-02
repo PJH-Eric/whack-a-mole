@@ -489,6 +489,95 @@ eq(sanitizeName('阿​明'), '阿明', '零寬字元會被清掉');
 eq(sanitizeName('阿明'), '阿明', '控制字元會被清掉');
 eq(sanitizeText('a'.repeat(300), 120).length, 120, '聊天訊息限制 120 字');
 
+/* ============================================================ 盤面大小 */
+group('盤面大小（可設定的幾乘幾）');
+
+{
+  ok(Rules.BOARDS.length >= 3, '至少提供 3 種盤面大小');
+  ok(Rules.BOARDS.every((b) => b.cols * b.rows === b.holes), '每種盤面的 cols×rows 等於洞數');
+  ok(new Set(Rules.BOARDS.map((b) => b.key)).size === Rules.BOARDS.length, '盤面 key 不重複');
+  eq(Rules.boardOf(Rules.DEFAULT_BOARD).holes, 12, '預設盤面是 12 洞');
+  eq(Rules.boardOf('4x3').key, '4x3', 'boardOf 認得合法 key');
+  eq(Rules.boardOf('999x999').key, Rules.DEFAULT_BOARD, '不認得的盤面收斂回預設，不丟例外');
+  eq(Rules.boardOf(undefined).key, Rules.DEFAULT_BOARD, '沒給盤面就是預設');
+  ok(Rules.BOARDS.some((b) => b.holes > 12), '有比預設更多洞的選項');
+
+  const big = Rules.createMatch({ seed: 's1', players: [{ id: 'a', name: 'A' }], now: T0, board: '6x4' });
+  eq(big.holes, 24, '6×4 開出 24 個洞');
+  eq(big.cols, 6, '6×4 的 cols');
+  eq(big.rows, 4, '6×4 的 rows');
+  eq(Rules.snapshot(big, T0).board, '6x4', '快照帶著盤面 key，前端才知道要排幾格');
+  eq(Rules.snapshot(big, T0).holes, 24, '快照帶著洞數');
+
+  const def = Rules.createMatch({ seed: 's1', players: [{ id: 'a', name: 'A' }], now: T0 });
+  eq(def.holes, 12, '不指定盤面時維持 12 洞');
+
+  /* 節奏縮放：在預設盤面上必須是恆等的，否則既有難度會被悄悄改掉 */
+  const st = { no: 3, fromMs: 0, label: 'x', spawnMs: 430, jitter: 150, maxUp: 6, upScale: 0.82 };
+  eq(Rules.scaleStage(st, 12), st, '12 洞盤面上節奏縮放是恆等的（既有難度不變）');
+  const s24 = Rules.scaleStage(st, 24);
+  ok(s24.maxUp > st.maxUp, '洞變兩倍時同時在場的地鼠也變多');
+  ok(s24.spawnMs < st.spawnMs, '洞變兩倍時冒得更快');
+  eq(s24.maxUp, 12, '24 洞的同時上限是 12');
+  ok(Rules.scaleStage(st, 24).spawnMs >= 150, '冒出間隔有下限，不會變成 0');
+
+  /* 大盤面真的跑得完一局，而且地鼠只會出現在合法的洞裡 */
+  {
+    const state = Rules.createMatch({ seed: 'big', players: [{ id: 'me', name: '我' }], now: T0, board: '6x4' });
+    const rng = RNG.createRng('spawn:big');
+    let t = T0, seen = 0, maxConcurrent = 0, badHole = false;
+    while (t < state.endAt + 100) {
+      t += 50;
+      Rules.tick(state, t, rng);
+      state.moles.forEach((m) => { if (!(m.hole >= 0 && m.hole < 24)) badHole = true; });
+      maxConcurrent = Math.max(maxConcurrent, state.moles.length);
+      seen = state.spawned;
+    }
+    ok(!badHole, '大盤面的地鼠都待在 0..23 的合法洞裡');
+    ok(seen > 100, '大盤面一局冒得出夠多地鼠', 'got ' + seen);
+    ok(maxConcurrent > 6, '大盤面同時在場的地鼠比小盤面多', 'got ' + maxConcurrent);
+    ok(maxConcurrent <= 24, '同時在場的地鼠不會超過洞數', 'got ' + maxConcurrent);
+    ok(state.over, '大盤面一樣會正常結束');
+  }
+}
+
+/* ============================================================ 房間盤面設定 */
+group('房間的盤面大小（房主設定）');
+
+{
+  const store = new RoomStore({});
+  const r = store.create('h', { name: '房主', now: T0 });
+  const room = r.room;
+  eq(room.board, Rules.DEFAULT_BOARD, '新房間用預設盤面');
+
+  ok(!room.setBoard('someone', '6x4').ok, '不是房主不能改盤面');
+  eq(room.board, Rules.DEFAULT_BOARD, '被擋下來之後盤面沒有被改動');
+
+  ok(!room.setBoard('h', '99x99').ok, '不存在的盤面被擋下來');
+  eq(room.board, Rules.DEFAULT_BOARD, '擋下來之後仍是預設盤面');
+
+  const okRes = room.setBoard('h', '6x4');
+  ok(okRes.ok, '房主可以改盤面');
+  ok(okRes.changed, '真的改了會回報 changed');
+  eq(room.board, '6x4', '盤面已更新');
+  ok(!room.setBoard('h', '6x4').changed, '改成同一個值不算變更（不用再廣播訊息）');
+
+  eq(room.viewFor('h', T0).board, '6x4', '房間投影帶著盤面');
+  ok(room.viewFor('h', T0).boards.length >= 3, '投影帶著可選清單，前端不用自己寫死');
+  ok(room.viewFor('h', T0).you.can.setBoard, '房主在 lobby 有改盤面的權限');
+  eq(room.brief().board, '6x4', '大廳列表也看得到盤面');
+
+  /* 開打之後不能改：地洞編號會對不上，進行中的地鼠會跑到不存在的洞 */
+  room.join('p2', { name: '玩家二', role: 'player', now: T0 });
+  room.setReady('h', true); room.setReady('p2', true);
+  const st = room.start('h', T0, { roundMs: 5000, countdownMs: 0 });
+  ok(st.ok, '房間開得起來');
+  eq(room.state.holes, 24, '開局用的是房主選的 24 洞盤面');
+  ok(!room.setBoard('h', '4x3').ok, '對局進行中不能改盤面');
+  ok(!room.viewFor('h', T0).you.can.setBoard, '進行中權限旗標也關掉了');
+  eq(room.board, '6x4', '進行中盤面保持不變');
+}
+
 /* ============================================================ server URL 設定 */
 group('server URL 解析（GitHub Pages 用得到）');
 

@@ -22,7 +22,24 @@
 
   var COLS = 4;
   var ROWS = 3;
-  var HOLES = COLS * ROWS;          // 12 個地洞，手機直向也塞得下
+  var HOLES = COLS * ROWS;          // 預設 12 個地洞，手機直向也塞得下
+
+  /* 可以選的盤面大小。直向裝置會把 cols/rows 對調顯示，那純粹是排版，
+   * 地洞的編號不會變，所以規則、AI、重播都不受影響。 */
+  var BOARDS = [
+    { key: '4x3', cols: 4, rows: 3, label: '4 × 3', note: '12 洞・標準' },
+    { key: '5x3', cols: 5, rows: 3, label: '5 × 3', note: '15 洞・寬一點' },
+    { key: '5x4', cols: 5, rows: 4, label: '5 × 4', note: '20 洞・熱鬧' },
+    { key: '6x4', cols: 6, rows: 4, label: '6 × 4', note: '24 洞・混亂' }
+  ];
+  for (var bi = 0; bi < BOARDS.length; bi++) BOARDS[bi].holes = BOARDS[bi].cols * BOARDS[bi].rows;
+  var DEFAULT_BOARD = BOARDS[0].key;
+
+  /** 盤面 key → 盤面設定。不認得的 key 一律回到預設，不丟例外。 */
+  function boardOf(key) {
+    for (var i = 0; i < BOARDS.length; i++) if (BOARDS[i].key === key) return BOARDS[i];
+    return BOARDS[0];
+  }
 
   /* 一局長度與開賽倒數（毫秒）。伺服器可用環境變數覆蓋。 */
   var ROUND_MS = 90000;
@@ -131,6 +148,22 @@
     return s;
   }
 
+  /**
+   * 洞變多的時候節奏要一起放大，不然 24 個洞配 3 隻地鼠整面都是空的。
+   * 同時在場的地鼠數按洞數比例增加，冒出間隔按同一比例縮短。
+   * 在預設的 12 洞盤面上這個函式是恆等的 —— 既有難度與測試完全不受影響。
+   */
+  function scaleStage(st, holes) {
+    var k = (holes || HOLES) / HOLES;
+    if (k === 1) return st;
+    return {
+      no: st.no, fromMs: st.fromMs, label: st.label, upScale: st.upScale,
+      spawnMs: Math.max(150, Math.round(st.spawnMs / k)),
+      jitter: Math.round(st.jitter / k),
+      maxUp: Math.max(1, Math.round(st.maxUp * k))
+    };
+  }
+
   /* ------------------------------------------------------------ 小工具 */
 
   function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
@@ -232,6 +265,7 @@
     var roundMs = o.roundMs || ROUND_MS;
     var countdownMs = o.countdownMs === undefined ? COUNTDOWN_MS : o.countdownMs;
     var seed = RNG.normalizeSeed(o.seed) || RNG.randomSeed();
+    var board = boardOf(o.board);
     var players = {};
     var order = [];
     (o.players || []).slice(0, MAX_PLAYERS).forEach(function (p, i) {
@@ -240,7 +274,8 @@
     });
     return {
       seed: seed,
-      holes: HOLES, cols: COLS, rows: ROWS,
+      board: board.key,
+      holes: board.holes, cols: board.cols, rows: board.rows,
       createdAt: now,
       startAt: now + countdownMs,
       endAt: now + countdownMs + roundMs,
@@ -324,7 +359,7 @@
     while (now >= state.nextSpawnAt && guard < 4) {
       guard += 1;
       var el = elapsed(state, state.nextSpawnAt);
-      var st = stageAt(el);
+      var st = scaleStage(stageAt(el), state.holes);
       var gap = st.spawnMs + Math.round(((rng || Math.random)() * 2 - 1) * st.jitter);
       state.nextSpawnAt += Math.max(140, gap);
 
@@ -483,7 +518,7 @@
     return {
       seed: state.seed,
       phase: phaseOf(state, now),
-      cols: state.cols, rows: state.rows, holes: state.holes,
+      board: state.board, cols: state.cols, rows: state.rows, holes: state.holes,
       startAt: state.startAt, endAt: state.endAt,
       remainMs: remainMs(state, now),
       countdownMs: Math.max(0, state.startAt - now),
@@ -516,6 +551,7 @@
 
   return {
     COLS: COLS, ROWS: ROWS, HOLES: HOLES,
+    BOARDS: BOARDS, DEFAULT_BOARD: DEFAULT_BOARD, boardOf: boardOf, scaleStage: scaleStage,
     ROUND_MS: ROUND_MS, COUNTDOWN_MS: COUNTDOWN_MS,
     RISE_MS: RISE_MS, SINK_MS: SINK_MS,
     COMBO_STEP: COMBO_STEP, COMBO_BONUS: COMBO_BONUS, COMBO_MAX_BONUS: COMBO_MAX_BONUS,

@@ -16,6 +16,8 @@
     reduceMotion: 'wam_reduce_motion',
     vibrate: 'wam_vibrate',
     bigMark: 'wam_big_mark',
+    board: 'wam_board',
+    hammerCursor: 'wam_hammer_cursor',
     sidebarOpen: 'wam_sidebar'
   };
 
@@ -78,6 +80,9 @@
     reduceMotion: function (v) { if (v === undefined) return getFlag(KEY.reduceMotion, false); setFlag(KEY.reduceMotion, v); return v; },
     vibrate: function (v) { if (v === undefined) return getFlag(KEY.vibrate, true); setFlag(KEY.vibrate, v); return v; },
     bigMark: function (v) { if (v === undefined) return getFlag(KEY.bigMark, true); setFlag(KEY.bigMark, v); return v; },
+    /* 單機盤面大小；線上的盤面由房主決定，不看這個值 */
+    board: function (v) { if (v === undefined) return get(KEY.board, ''); set(KEY.board, v); return v; },
+    hammerCursor: function (v) { if (v === undefined) return getFlag(KEY.hammerCursor, true); setFlag(KEY.hammerCursor, v); return v; },
     sidebarOpen: function (v) { if (v === undefined) return getFlag(KEY.sidebarOpen, true); setFlag(KEY.sidebarOpen, v); return v; },
     best: best,
     stats: stats,
@@ -86,6 +91,7 @@
       setFlag(KEY.reduceMotion, false);
       setFlag(KEY.vibrate, true);
       setFlag(KEY.bigMark, true);
+      setFlag(KEY.hammerCursor, true);
     }
   };
 }(window));

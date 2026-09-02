@@ -191,6 +191,31 @@ async function main() {
     ok(clients[1].errors.some((e) => e.code === 'muted'), '被禁言的人不能發言');
   }
 
+  group('房主設定盤面大小');
+  {
+    const notHost = clients[1];
+    notHost.errors.length = 0;
+    notHost.send('room:setBoard', { board: '6x4' });
+    await sleep(220);
+    ok(notHost.errors.some((e) => e.code === 'perm'), '非房主不能改盤面大小');
+    eq(host.view.board, '4x3', '被擋下來之後盤面沒變');
+
+    host.errors.length = 0;
+    host.send('room:setBoard', { board: '9x9' });
+    await sleep(220);
+    ok(host.errors.some((e) => e.code === 'badboard'), '不存在的盤面被伺服器擋下來');
+
+    ok(host.view.boards && host.view.boards.length >= 3, '房間投影帶著可選盤面清單');
+    ok(host.view.you.can.setBoard, '房主在準備階段可以改盤面');
+
+    host.send('room:setBoard', { board: '6x4' });
+    await until(() => host.view.board === '6x4', 2000, '盤面改成 6x4');
+    eq(host.view.board, '6x4', '房主改得動盤面');
+    eq(notHost.view.board, '6x4', '其他人也同步看到新盤面');
+    ok(notHost.view.chat.some((m) => (m.text || '').indexOf('6') >= 0 || (m.text || '').indexOf('盤面') >= 0),
+      '改盤面會在聊天室留下系統訊息');
+  }
+
   group('開始對局');
   {
     /* 讓其中一位改成觀戰，空出來的位子加一個困難電腦，驗證 AI 座位 */
@@ -217,6 +242,13 @@ async function main() {
     await until(() => host.view.phase === 'playing', 4000, '倒數結束');
     eq(host.view.phase, 'playing', '倒數結束後開打');
     ok(host.view.match && host.view.match.seed, '對局有種子，可重播');
+    eq(host.view.match.holes, 24, '開局用的是房主選的 24 洞盤面');
+    eq(host.view.match.board, '6x4', '快照帶著盤面 key');
+    host.errors.length = 0;
+    host.send('room:setBoard', { board: '4x3' });
+    await sleep(220);
+    ok(host.errors.some((e) => e.code === 'phase'), '對局進行中不能改盤面');
+    eq(host.view.board, '6x4', '進行中盤面保持不變');
   }
 
   group('搶打先得分（共用盤面的核心）');

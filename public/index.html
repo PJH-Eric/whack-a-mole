@@ -59,6 +59,10 @@
         <button class="pickcard" data-v="4" type="button" role="radio" aria-checked="false"><b>4</b><span>滿場五人</span></button>
       </div>
 
+      <h3 class="lbl">盤面大小</h3>
+      <div class="cardpick tight" id="opt-board" role="radiogroup" aria-label="盤面大小"></div>
+      <p class="hint">洞愈多，同時冒出來的地鼠也愈多、冒得愈快。實際排成幾乘幾會依裝置的畫面形狀自動挑，轉向也會跟著換。</p>
+
       <p class="note">單機和線上用的是同一套規則與同一套電腦對手程式，練熟了直接上線打。</p>
       <div class="panel-foot">
         <button class="btn3d big" data-color="mint" id="b-solo-start"><span class="ico">🔨</span>開始練習</button>
@@ -178,6 +182,10 @@
                 <span class="lbl2">電腦對手</span>
                 <div class="ai-add" id="ai-add"></div>
               </div>
+              <div class="ai-manage" id="board-manage" hidden>
+                <span class="lbl2">盤面大小</span>
+                <div class="ai-add" id="board-pick" role="radiogroup" aria-label="盤面大小"></div>
+              </div>
               <p class="ovnote" id="ov-wait-note"></p>
               <div class="ovbtns" id="ov-wait-btns"></div>
             </div>
@@ -217,6 +225,7 @@
         <li><b>90 秒一局，分三階段。</b>熱身 → 加速 → 狂亂，地鼠愈冒愈快、停留愈短，稀有的高分地鼠也愈後面才出現。</li>
         <li><b>連擊有加成。</b>連續敲中壞人每 5 連擊 +10%，最多 +50%；敲到好人連擊歸零。</li>
         <li><b>線上是共用盤面。</b>最多 5 個人看同一組地洞，同一隻地鼠<b>誰先敲到誰得分</b>，慢一步就沒了。</li>
+        <li><b>盤面大小可以調。</b>12 到 24 個地洞，單機在設定裡選、線上由房主決定。洞愈多同時冒出來的地鼠也愈多。</li>
         <li><b>敲空不扣分。</b>敲到空地洞只是浪費時間，不會扣分，但會拉低命中率。</li>
       </ol>
 
@@ -227,7 +236,7 @@
 
       <h3 class="lbl">操作方式</h3>
       <ul class="plain">
-        <li><b>觸控／滑鼠：</b>直接按地洞，按下去就算，不用等放開。</li>
+        <li><b>觸控／滑鼠：</b>直接按地洞，按下去就算，不用等放開。用滑鼠時游標會變成小鐵鎚（可以在 ⚙ 設定裡關掉）。</li>
         <li><b>鍵盤：</b>用 Tab 或方向鍵移到地洞，按 Enter 或空白鍵敲下去。</li>
         <li><b>螢幕閱讀器：</b>每個地洞都會唸出目前是哪一種地鼠、加分還是扣分。</li>
       </ul>
@@ -290,6 +299,10 @@
         <div class="setrow">
           <label for="set-mark">分數標記放大<small>色彩辨識不便時比較好認好人壞人</small></label>
           <input type="checkbox" id="set-mark" class="switch">
+        </div>
+        <div class="setrow">
+          <label for="set-hammer">鐵鎚滑鼠游標<small>對局時把滑鼠變成小槌子，觸控裝置沒有影響</small></label>
+          <input type="checkbox" id="set-hammer" class="switch">
         </div>
         <hr class="sep">
         <div class="setrow stack">
