@@ -536,14 +536,24 @@ body{
   .hud{padding-right:54px}
 }
 
+/* 窄螢幕的 HUD 只有一排的空間：階段標籤縮成「熱身／加速／狂亂」，
+   時間、階段、分數就不會被擠到第二排去，盤面也不會跟著上下跳。 */
+@media (max-width:560px){
+  .hud-stage .stage-no{display:none}
+  .hud{gap:7px}
+}
+
 /* 很小的手機：字再縮一點，但按鈕命中區維持 44px 以上 */
 @media (max-width:400px){
   :root{font-size:15px}
   .home-btns .btn3d.big{font-size:1.05rem;min-height:62px}
   .panel{padding:14px 12px 28px}
   .modal-card{border-radius:20px}
-  .hud-time,.hud-score{min-width:66px;padding:3px 9px}
+  .hud-time,.hud-score{min-width:60px;padding:3px 8px}
   .hud-time b,.hud-score b{font-size:1.2rem}
+  /* 連擊牌冒出來時 HUD 不要被擠成兩排，盤面才不會上下跳 */
+  .hud-combo,.hud-buff{padding:3px 8px;font-size:.74rem}
+  .hud-stage{padding:4px 10px;font-size:.8rem}
 }
 
 /* 超寬桌機：側欄不要跟著變胖，盤面也不要無限放大到看不出焦點 */

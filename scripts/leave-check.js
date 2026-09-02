@@ -78,6 +78,10 @@ async function main() {
     if (customDialog) await page.click('#b-confirm-ok');
     await page.waitForFunction(() => document.querySelector('#s-home').classList.contains('active'), null, { timeout: 500 });
     ok(await page.$eval('#s-home', (element) => element.classList.contains('active')), '按下確認後立即回到主選單');
+    /* 伺服器每秒推一次同步，離開後還在路上的那一包不可以把人拉回對戰畫面 */
+    await sleep(2200);
+    ok(await page.$eval('#s-home', (element) => element.classList.contains('active')),
+      '離開後晚到的同步包不會把人拉回對戰畫面');
     /* 單機打到一半離開也要問一句，不然一個誤觸就沒了 */
     await page.click('#b-solo');
     await page.waitForSelector('#s-solo.active', { timeout: 3000 });

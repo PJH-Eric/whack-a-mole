@@ -458,7 +458,9 @@
     if (m.phase === 'playing' && sec <= 10 && !S.warned) { S.warned = true; Sound.play('warn'); }
 
     var st = $('hud-stage');
-    st.textContent = over ? '時間到' : '第 ' + m.stage.no + ' 階段・' + m.stage.label;
+    /* 「第 N 階段・」包成 span：窄螢幕用 CSS 收起來，HUD 才排得下一行 */
+    st.innerHTML = over ? '時間到'
+      : '<span class="stage-no">第 ' + m.stage.no + ' 階段・</span>' + esc(m.stage.label);
     st.className = 'hud-stage' + (!over && m.stage.no > 1 ? ' s' + m.stage.no : '');
     if (m.phase === 'playing' && m.stage.no !== S.lastStage) {
       if (S.lastStage) { Sound.play('stage'); Board.shout(m.stage.label + '！地鼠變快了', 'stage', 1100); }
@@ -554,7 +556,10 @@
     /* 窄版（手機、平板直向）盤面等比縮放後周圍會留白，把即時排行貼在那裡：
        打到一半不用開抽屜也知道誰領先。寬版有固定側欄，CSS 會把它藏起來。 */
     var lb = $('live-bar');
-    var lbHtml = m.standings.length > 1
+    /* 只有自己一個人在打（單機不加對手）時 HUD 已經有分數了，浮條就免了；
+       觀戰的人自己不在排行裡，所以看到誰都要顯示。 */
+    var showLive = m.standings.length > 1 || !m.standings.some(function (p) { return p.id === me; });
+    var lbHtml = showLive
       ? m.standings.slice(0, 5).map(function (p) {
         return '<span class="lchip' + (p.id === me ? ' me' : '') + '" style="--who:' + colorHex(p.color) + '">'
           + '<b>' + p.rank + '</b><span class="ln">' + esc(p.name) + '</span><i>' + p.score + '</i></span>';
@@ -793,9 +798,16 @@
 
   function joinRoom(code, token, role) {
     return connect().then(function () {
+      /* 先認定自己要進線上模式：同步包有可能比 ack 早到，
+         晚設會讓第一包同步被 onSync 的守門丟掉。 */
+      S.mode = 'online';
       return new Promise(function (resolve) {
         Online.send('room:join', { code: code, name: S.name, token: token || null, role: role || null }, function (res) {
-          if (!res || !res.ok) { toast((res && res.error) || '加入失敗'); return resolve(false); }
+          if (!res || !res.ok) {
+            if (!S.view) S.mode = null;
+            toast((res && res.error) || '加入失敗');
+            return resolve(false);
+          }
           S.mode = 'online';
           if (res.downgraded) toast('玩家席位已滿，你先以觀戰身分進來了。', 3600);
           else if (res.waiting) toast('這局已經開打，你先觀戰，下一局就能下場。', 3600);
@@ -826,12 +838,16 @@
 
   function createRoom() {
     return connect().then(function () {
+      S.mode = 'online';
       Online.send('room:create', {
         name: S.name,
         roomName: $('room-name').value,
         private: $('room-private').checked
       }, function (res) {
-        if (!res || !res.ok) return toast((res && res.error) || '建立失敗');
+        if (!res || !res.ok) {
+          if (!S.view) S.mode = null;
+          return toast((res && res.error) || '建立失敗');
+        }
         S.mode = 'online';
         Sound.play('join');
       });
@@ -839,6 +855,9 @@
   }
 
   function onSync(view) {
+    /* 已經離開房間（S.mode 被清掉）時，伺服器路上還沒到的同步包要丟掉，
+       不然剛按完「離開」就會被拉回對戰畫面。 */
+    if (S.mode !== 'online') return;
     var wasPhase = S.view ? S.view.phase : null;
     S.view = view;
     S.match = view.match;
@@ -1216,7 +1235,7 @@
     Online.on('lobby:rooms', paintRoomList);
     Online.on('room:sync', onSync);
     Online.on('room:events', function (p) {
-      if (!p || !p.events) return;
+      if (!p || !p.events || S.mode !== 'online') return;
       for (var i = 0; i < p.events.length; i++) applyEventToSnap(S.match, p.events[i]);
       handleEvents(p.events, srvNow());
     });
@@ -1282,8 +1301,10 @@
       $('join-code').value = entry.room;
       S.joinIntent = { room: entry.room, invite: entry.invite || null };
       if (entry.invite || !Store.nick()) {
-        /* 邀請連結一定先讓人確認／修改暱稱，不能用裝置上的舊名稱直接進房。 */
-        toast('請先確認或設定玩家暱稱，再按「加入房間」就進去了。', 4600);
+        /* 邀請連結一定先讓人確認／修改名字，不能用裝置上的舊名稱直接進房。
+           先把線連起來，這樣填名字的時候就看得到伺服器狀態。 */
+        connect().catch(function () {});
+        toast('先確認一下你的名字，再按「加入房間」就進去了。', 4600);
         try { $('lobby-nick').focus(); } catch (e) {}
       } else {
         enterByIntent();
