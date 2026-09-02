@@ -252,8 +252,9 @@ npm run test:board    # 各裝置盤面列欄與選項一致性
 npm run test:sync     # 地鼠本體與分數標記出現／消失同步
 npm run test:sidebar  # 切換側欄分頁後操作列仍固定
 npm run test:invite-nick # 被邀請者進房前設定玩家暱稱
+npm run test:reconnect # 斷線重連回同一間房、房主離開後接手再開一局
 npm run test:browser  # 版面與流程實測（574 項，需要 playwright）
-npm run verify        # 八個一起跑
+npm run verify        # 九個一起跑
 ```
 
 `npm run test:browser` 需要先裝瀏覽器：
@@ -303,6 +304,7 @@ whack-a-mole/
 │  ├─ board-check.js         各裝置盤面一致性實測
 │  ├─ sync-check.js          地鼠與分數標記同步實測
 │  ├─ sidebar-check.js       側欄分頁與操作列固定實測
+│  ├─ reconnect-check.js     斷線重連與房主接手實測
 │  ├─ invite-nick-check.js   邀請進房前設定暱稱實測
 │  └─ browser-check.js       版面與流程實測（Playwright）
 ├─ tests/verify.js           規則單元測試

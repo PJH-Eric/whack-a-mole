@@ -39,6 +39,7 @@
     sidePane: 'sum',
     raf: 0,
     lastPaint: 0,
+    drewOver: false,        // 結算後已經補畫過最後一幀了沒
     joinIntent: null
   };
 
@@ -409,7 +410,13 @@
       var now = srvNow();
       if (S.mode === 'solo') soloStep(Date.now());
       else pruneExpired(S.match, now);
-      if (S.match) Board.draw(S.match, now);
+      /* 結算之後盤面是靜止的（地鼠都收掉了），只再畫一次把最後一隻清乾淨，
+         之後就不必每一幀重畫 —— 大家常常停在結算畫面聊天，手機省一點電。
+         下一局進倒數時 phase 就不是 over 了，會自動恢復每幀重畫。 */
+      if (S.match) {
+        var still = S.match.phase === 'over';
+        if (!still || !S.drewOver) { Board.draw(S.match, now); S.drewOver = still; }
+      }
       /* DOM 更新壓在 ~12fps，省電也避免手機掉幀 */
       if (now - S.lastPaint > 80) { S.lastPaint = now; paintHud(); paintSummary(); paintPlayingFlag(); }
     };

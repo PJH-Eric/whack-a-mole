@@ -359,6 +359,27 @@ async function main() {
       });
     }
     ok(hits >= 3, '玩家敲得到壞地鼠並加分', 'hits=' + hits);
+
+    /* 鍵盤也要打得到：焦點移到地洞 + Enter（圖鑑裡就是這樣寫的） */
+    let keyHits = hits;
+    for (let i = 0; i < 200 && keyHits === hits; i++) {
+      const target = await page.evaluate(() => {
+        const s2 = window.WAM.S.match;
+        if (!s2) return null;
+        const now = Date.now();
+        const m = s2.moles.filter((x) => x.side === 'bad' && now < x.expireAt - 250)[0];
+        return m ? m.hole : null;
+      });
+      if (target === null) { await sleep(40); continue; }
+      await page.focus('#board .hole[data-hole="' + target + '"]');
+      await page.keyboard.press('Enter');
+      await sleep(60);
+      keyHits = await page.evaluate(() => {
+        const r = window.WAM.S.match.standings.find((p) => p.id === 'me');
+        return r ? r.hits : 0;
+      });
+    }
+    ok(keyHits > hits, '鍵盤（焦點 + Enter）也敲得到地鼠', hits + ' → ' + keyHits);
     const score = await page.$eval('#hud-score', (e) => Number(e.textContent));
     ok(score > 0, 'HUD 分數有跟著更新', 'score=' + score);
     const flew = await page.evaluate(() => document.querySelectorAll('#fx .flyscore').length >= 0);
