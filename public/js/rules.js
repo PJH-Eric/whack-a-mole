@@ -206,7 +206,8 @@
   var STAGES = [
     { no: 1, at: 0, label: '熱身', spawnMs: 900, jitter: 260, maxUp: 3, upScale: 1.25 },
     { no: 2, at: 1 / 3, label: '加速', spawnMs: 640, jitter: 200, maxUp: 4, upScale: 1.00 },
-    { no: 3, at: 2 / 3, label: '狂亂', spawnMs: 430, jitter: 150, maxUp: 6, upScale: 0.82 }
+    /* 倒數後段稍微收斂，避免節奏突然過快又過於擁擠。 */
+    { no: 3, at: 2 / 3, label: '狂亂', spawnMs: 480, jitter: 170, maxUp: 5, upScale: 0.90 }
   ];
 
   /**

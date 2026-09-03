@@ -71,6 +71,9 @@ eq(Rules.stageAt(60000, 90000).no, 3, '90 秒局的 60 秒仍然是第 3 階段�
 ok(Rules.STAGES[2].spawnMs < Rules.STAGES[1].spawnMs, '愈後面冒得愈快');
 ok(Rules.STAGES[2].maxUp > Rules.STAGES[0].maxUp, '愈後面同時出現的愈多');
 ok(Rules.STAGES[2].upScale < Rules.STAGES[0].upScale, '愈後面停留愈短');
+ok(Rules.STAGES[2].spawnMs > 430, '倒數後段冒出間隔已稍微放慢');
+ok(Rules.STAGES[2].maxUp < 6, '倒數後段同時在場地鼠已稍微減少');
+ok(Rules.STAGES[2].upScale > 0.82, '倒數後段地鼠停留時間已稍微放寬');
 
 /* 一局長度 */
 eq(Rules.ROUND_SECONDS.join(','), '60,75,90', '一局長度可以選 60／75／90 秒');
