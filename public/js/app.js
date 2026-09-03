@@ -308,8 +308,20 @@
    * 單機模式
    * ============================================================ */
 
+  /* 單機設定頁同時是「直接開打」和「建立房間」的共同設定來源。
+     秒數沒有手動選過時保留伺服器預設，明確選過才把值帶進新房間。 */
+  function localGameSettings() {
+    var rawRoundSec = Number(Store.roundSec());
+    return {
+      pace: AI.levelOf(Store.aiLevel()).key,
+      board: Rules.boardOf(Store.board()).key,
+      roundSec: Rules.ROUND_SECONDS.indexOf(rawRoundSec) >= 0 ? rawRoundSec : null
+    };
+  }
+
   function startSolo() {
-    var level = Store.aiLevel();
+    var settings = localGameSettings();
+    var level = settings.pace;
     var count = Number(Store.aiCount()) || 0;
     var seed = RNG.randomSeed();
     var now = Date.now();
@@ -328,7 +340,8 @@
     S.clockOffset = 0;
     S.view = null;
     /* 同一個難度同時決定地鼠節奏與電腦對手強弱 —— 玩家只要選一次 */
-    S.solo.state = Rules.createMatch({ seed: seed, players: roster, now: now, board: Store.board(), pace: level, roundMs: Rules.roundMsOf(Store.roundSec()) });
+    S.solo.state = Rules.createMatch({ seed: seed, players: roster, now: now,
+      board: settings.board, pace: settings.pace, roundMs: Rules.roundMsOf(settings.roundSec) });
     S.solo.rng = RNG.createRng('spawn:solo:' + seed);
     S.match = Rules.snapshot(S.solo.state, now);
     S.lastStage = 0; S.lastCombo = 0; S.warned = false;
@@ -846,11 +859,16 @@
   function createRoom() {
     return connect().then(function () {
       S.mode = 'online';
-      Online.send('room:create', {
+      var settings = localGameSettings();
+      var payload = {
         name: S.name,
         roomName: $('room-name').value,
-        private: $('room-private').checked
-      }, function (res) {
+        private: $('room-private').checked,
+        board: settings.board,
+        pace: settings.pace
+      };
+      if (settings.roundSec !== null) payload.roundSec = settings.roundSec;
+      Online.send('room:create', payload, function (res) {
         if (!res || !res.ok) {
           if (!S.view) S.mode = null;
           return toast((res && res.error) || '建立失敗');

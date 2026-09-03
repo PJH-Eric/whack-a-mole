@@ -14,8 +14,9 @@
     "test:sidebar": "node scripts/sidebar-check.js",
     "test:invite-nick": "node scripts/invite-nick-check.js",
     "test:reconnect": "node scripts/reconnect-check.js",
+    "test:settings": "node scripts/settings-check.js",
     "test:browser": "node scripts/browser-check.js",
-    "verify": "node tests/verify.js && node scripts/online-check.js && node scripts/leave-check.js && node scripts/board-check.js && node scripts/sync-check.js && node scripts/sidebar-check.js && node scripts/invite-nick-check.js && node scripts/reconnect-check.js && node scripts/browser-check.js",
+    "verify": "node tests/verify.js && node scripts/online-check.js && node scripts/leave-check.js && node scripts/board-check.js && node scripts/sync-check.js && node scripts/sidebar-check.js && node scripts/invite-nick-check.js && node scripts/reconnect-check.js && node scripts/settings-check.js && node scripts/browser-check.js",
     "inject": "node scripts/inject-server-url.js"
   },
   "engines": {

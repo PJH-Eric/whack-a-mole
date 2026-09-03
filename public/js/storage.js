@@ -81,9 +81,9 @@
     reduceMotion: function (v) { if (v === undefined) return getFlag(KEY.reduceMotion, false); setFlag(KEY.reduceMotion, v); return v; },
     vibrate: function (v) { if (v === undefined) return getFlag(KEY.vibrate, true); setFlag(KEY.vibrate, v); return v; },
     bigMark: function (v) { if (v === undefined) return getFlag(KEY.bigMark, true); setFlag(KEY.bigMark, v); return v; },
-    /* 單機盤面大小；線上的盤面由房主決定，不看這個值 */
+    /* 本機偏好的盤面大小；建立線上房間時先沿用，之後仍由房主決定 */
     board: function (v) { if (v === undefined) return get(KEY.board, ''); set(KEY.board, v); return v; },
-    /* 單機一局長度（秒）；線上的長度由房主決定，不看這個值 */
+    /* 本機偏好的一局長度；建立線上房間時先沿用，之後仍由房主決定 */
     roundSec: function (v) { if (v === undefined) return getNum(KEY.roundSec, 0); set(KEY.roundSec, v); return v; },
     hammerCursor: function (v) { if (v === undefined) return getFlag(KEY.hammerCursor, true); setFlag(KEY.hammerCursor, v); return v; },
     sidebarOpen: function (v) { if (v === undefined) return getFlag(KEY.sidebarOpen, true); setFlag(KEY.sidebarOpen, v); return v; },
