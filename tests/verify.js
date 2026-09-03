@@ -319,6 +319,20 @@ ok(AI.levelOf('easy').reactionMs > AI.levelOf('normal').reactionMs, '簡單反�
 ok(AI.levelOf('normal').reactionMs > AI.levelOf('hard').reactionMs, '普通反應比困難慢');
 ok(AI.levelOf('easy').goodMistake > AI.levelOf('hard').goodMistake, '簡單比較常誤敲好人');
 ok(AI.levelOf('easy').moveMs > AI.levelOf('hard').moveMs, '簡單移動槌子比較慢');
+const AI_PREVIOUS = {
+  rookie: { reactionMs: 980, swingMs: 1050, goodMistake: 0.46 },
+  easy: { reactionMs: 640, swingMs: 700, goodMistake: 0.34 },
+  normal: { reactionMs: 430, swingMs: 500, goodMistake: 0.16 },
+  hard: { reactionMs: 300, swingMs: 390, goodMistake: 0.05 }
+};
+for (const lv of AI.ORDER) {
+  ok(AI.levelOf(lv).reactionMs > AI_PREVIOUS[lv].reactionMs,
+    AI.levelOf(lv).label + ' 的反應時間已比上一版放慢');
+  ok(AI.levelOf(lv).swingMs > AI_PREVIOUS[lv].swingMs,
+    AI.levelOf(lv).label + ' 的揮槌冷卻已比上一版放慢');
+  ok(AI.levelOf(lv).goodMistake > AI_PREVIOUS[lv].goodMistake,
+    AI.levelOf(lv).label + ' 的誤判率已比上一版提高');
+}
 eq(AI.gridDistance(0, 3, 4), 3, '同一列跨 3 格');
 eq(AI.gridDistance(0, 11, 4), 3, '對角距離用切比雪夫算');
 eq(AI.gridDistance(-1, 5, 4), 0, '第一槌沒有移動成本');
@@ -539,9 +553,11 @@ group('盤面大小（可設定的幾乘幾）');
   const def = Rules.createMatch({ seed: 's1', players: [{ id: 'a', name: 'A' }], now: T0 });
   eq(def.holes, 12, '不指定盤面時維持 12 洞');
 
-  /* 節奏縮放：在預設盤面上必須是恆等的，否則既有難度會被悄悄改掉 */
+  /* 節奏縮放：洞數會改變密度，難度會改變地鼠停留與冒出節奏 */
   const st = { no: 3, fromMs: 0, label: 'x', spawnMs: 430, jitter: 150, maxUp: 6, upScale: 0.82 };
-  eq(Rules.scaleStage(st, 12), st, '12 洞盤面上節奏縮放是恆等的（既有難度不變）');
+  const defaultStage = Rules.scaleStage(st, 12);
+  ok(defaultStage.upScale > st.upScale, '預設難度的地鼠停留時間已稍微放寬');
+  ok(defaultStage.spawnMs > st.spawnMs, '預設難度的冒出間隔已稍微放慢');
   const s24 = Rules.scaleStage(st, 24);
   ok(s24.maxUp > st.maxUp, '洞變兩倍時同時在場的地鼠也變多');
   ok(s24.spawnMs < st.spawnMs, '洞變兩倍時冒得更快');
@@ -579,7 +595,19 @@ group('難度分級（地鼠冒多快、停多久）');
   ok(Rules.PACE_ORDER.every((k) => Rules.paceOf(k).label && Rules.paceOf(k).blurb), '每段難度都有名字與說明');
 
   const st = { no: 1, fromMs: 0, label: '熱身', spawnMs: 900, jitter: 260, maxUp: 3, upScale: 1.25 };
-  eq(Rules.scaleStage(st, 12, 'normal'), st, '12 洞 + 普通時節奏縮放是恆等的（原本調好的基準不變）');
+  const previousPace = {
+    rookie: { upScale: 2.4, spawnScale: 1.9 },
+    easy: { upScale: 1.6, spawnScale: 1.35 },
+    normal: { upScale: 1, spawnScale: 1 },
+    hard: { upScale: 0.75, spawnScale: 0.8 }
+  };
+  for (const k of Rules.PACE_ORDER) {
+    const pace = Rules.paceOf(k);
+    ok(pace.upScale > previousPace[k].upScale,
+      pace.label + ' 的地鼠停留時間已比上一版放寬');
+    ok(pace.spawnScale > previousPace[k].spawnScale,
+      pace.label + ' 的冒出間隔已比上一版放慢');
+  }
 
   const P = Rules.PACE_ORDER.map((k) => Rules.scaleStage(st, 12, k));
   for (let i = 1; i < P.length; i++) {

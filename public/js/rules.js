@@ -171,28 +171,28 @@
    *   upScale     停留時間的倍率（愈大＝停愈久＝愈好敲）
    *   spawnScale  冒出間隔的倍率（愈大＝冒得愈慢）
    *   maxUpDelta  同時在場的地鼠數增減
-   * 普通＝1 倍，是原本調好的基準，所以既有的難度數字完全沒動。
+   * 每段都保留明確差異；這版整體再放寬一點，讓新手與休閒玩家更容易跟上。
    */
   var PACES = {
     rookie: {
       key: 'rookie', label: '超級新手', emoji: '🍼',
-      upScale: 2.4, spawnScale: 1.9, maxUpDelta: -1,
+      upScale: 2.64, spawnScale: 2.09, maxUpDelta: -1,
       blurb: '地鼠慢慢冒、停很久，看清楚是好人壞人再敲也來得及。'
     },
     easy: {
       key: 'easy', label: '簡單', emoji: '🌱',
-      upScale: 1.6, spawnScale: 1.35, maxUpDelta: 0,
+      upScale: 1.76, spawnScale: 1.5, maxUpDelta: 0,
       blurb: '地鼠停得久一點、冒得慢一點，剛上手玩這個。'
     },
     normal: {
       key: 'normal', label: '普通', emoji: '🔥',
-      upScale: 1, spawnScale: 1, maxUpDelta: 0,
-      blurb: '標準節奏，三階段愈來愈快。'
+      upScale: 1.1, spawnScale: 1.1, maxUpDelta: 0,
+      blurb: '稍微寬鬆的標準節奏，三階段仍會愈來愈快。'
     },
     hard: {
       key: 'hard', label: '困難', emoji: '⚡',
-      upScale: 0.75, spawnScale: 0.8, maxUpDelta: 1,
-      blurb: '地鼠一下就縮回去，冒得又快又多，手要夠穩。'
+      upScale: 0.85, spawnScale: 0.9, maxUpDelta: 1,
+      blurb: '比其他模式緊湊，但地鼠多留一點時間，挑戰手速與判斷。'
     }
   };
   var PACE_ORDER = ['rookie', 'easy', 'normal', 'hard'];
@@ -225,12 +225,11 @@
    * 洞變多的時候節奏要一起放大，不然 36 個洞配 3 隻地鼠整面都是空的；
    * 同時在場的地鼠數按洞數比例增加，冒出間隔按同一比例縮短。
    * 難度則決定地鼠停多久、冒多快、同時幾隻。
-   * 12 洞 + 普通難度時這個函式是恆等的 —— 原本調好的基準完全不受影響。
+   * 12 洞時仍會套用所選難度；洞數倍率則另外控制同時數量與冒出間隔。
    */
   function scaleStage(st, holes, pace) {
     var k = (holes || HOLES) / HOLES;
     var P = paceOf(pace);
-    if (k === 1 && P.key === DEFAULT_PACE) return st;
     return {
       no: st.no, at: st.at, label: st.label,
       upScale: st.upScale * P.upScale,

@@ -24,26 +24,26 @@
   var LEVELS = {
     rookie: {
       key: 'rookie', label: '超級新手', emoji: '🍼',
-      reactionMs: 980, reactionJitter: 340, swingMs: 1050, swingJitter: 330,
-      goodMistake: 0.46, whiff: 0.34, valueBias: 0.05, moveMs: 140,
+      reactionMs: 1100, reactionJitter: 380, swingMs: 1180, swingJitter: 370,
+      goodMistake: 0.48, whiff: 0.36, valueBias: 0.05, moveMs: 155,
       blurb: '剛學會拿槌子，慢吞吞又常常敲錯，陪第一次玩的人剛剛好。'
     },
     easy: {
       key: 'easy', label: '簡單', emoji: '🌱',
-      reactionMs: 640, reactionJitter: 220, swingMs: 700, swingJitter: 220,
-      goodMistake: 0.34, whiff: 0.24, valueBias: 0.15, moveMs: 95,
+      reactionMs: 720, reactionJitter: 250, swingMs: 790, swingJitter: 245,
+      goodMistake: 0.36, whiff: 0.26, valueBias: 0.15, moveMs: 105,
       blurb: '反應慢、常常誤敲好人，適合小朋友和第一次玩。'
     },
     normal: {
       key: 'normal', label: '普通', emoji: '🔥',
-      reactionMs: 430, reactionJitter: 150, swingMs: 500, swingJitter: 140,
-      goodMistake: 0.16, whiff: 0.11, valueBias: 0.6, moveMs: 62,
+      reactionMs: 480, reactionJitter: 165, swingMs: 560, swingJitter: 155,
+      goodMistake: 0.18, whiff: 0.13, valueBias: 0.6, moveMs: 68,
       blurb: '手腳算快，會挑分數高的打，偶爾會失手。'
     },
     hard: {
       key: 'hard', label: '困難', emoji: '⚡',
-      reactionMs: 300, reactionJitter: 90, swingMs: 390, swingJitter: 90,
-      goodMistake: 0.05, whiff: 0.05, valueBias: 1, moveMs: 40,
+      reactionMs: 335, reactionJitter: 100, swingMs: 430, swingJitter: 100,
+      goodMistake: 0.07, whiff: 0.07, valueBias: 1, moveMs: 44,
       blurb: '幾乎不誤敲好人，專挑黃金鼠和大王鼠，會跟你搶尾刀。'
     }
   };
