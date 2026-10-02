@@ -67,6 +67,8 @@
   function show(id) {
     els('.screen').forEach(function (s) { s.classList.toggle('active', s.id === id); });
     S.screen = id;
+    if (id !== 's-game' && w.NetworkLatency) w.NetworkLatency.setActive(false);
+    if (w.NetworkLatency) w.NetworkLatency.setActive(id === 's-game' && S.mode === 'online' && !!S.view && S.view.phase === 'playing');
     Sound.setTrack(id === 's-game' ? 'battle' : 'menu');
     SvgUI.repaintAll();
     var focusable = el('.screen.active h2, .screen.active h1, .screen.active .btn3d');
@@ -885,6 +887,7 @@
     if (S.mode !== 'online') return;
     var wasPhase = S.view ? S.view.phase : null;
     S.view = view;
+    if (w.NetworkLatency) w.NetworkLatency.setActive(S.screen === 's-game' && view.phase === 'playing');
     S.match = view.match;
     if (S.screen !== 's-game') {
       S.mode = 'online';
@@ -906,7 +909,7 @@
       }
     }
     /* 結算浮層上的「再來一局」票數會一直變，所以每次同步都重畫 */
-    if (view.phase === 'over') showResult();
+    if (view.phase === 'over') { if (w.NetworkLatency) w.NetworkLatency.setActive(false); showResult(); }
     else $('ov-result').hidden = true;
     paintWaitOverlay();
     paintChat(view.chat);
