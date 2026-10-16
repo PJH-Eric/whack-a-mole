@@ -23,28 +23,24 @@
 
   var LEVELS = {
     rookie: {
-      key: 'rookie', label: '超級新手', emoji: '🍼',
+      key: 'rookie', emoji: '🍼',
       reactionMs: 1100, reactionJitter: 380, swingMs: 1180, swingJitter: 370,
-      goodMistake: 0.48, whiff: 0.36, valueBias: 0.05, moveMs: 155,
-      blurb: '剛學會拿槌子，慢吞吞又常常敲錯，陪第一次玩的人剛剛好。'
+      goodMistake: 0.48, whiff: 0.36, valueBias: 0.05, moveMs: 155
     },
     easy: {
-      key: 'easy', label: '簡單', emoji: '🌱',
+      key: 'easy', emoji: '🌱',
       reactionMs: 720, reactionJitter: 250, swingMs: 790, swingJitter: 245,
-      goodMistake: 0.36, whiff: 0.26, valueBias: 0.15, moveMs: 105,
-      blurb: '反應慢、常常誤敲好人，適合小朋友和第一次玩。'
+      goodMistake: 0.36, whiff: 0.26, valueBias: 0.15, moveMs: 105
     },
     normal: {
-      key: 'normal', label: '普通', emoji: '🔥',
+      key: 'normal', emoji: '🔥',
       reactionMs: 480, reactionJitter: 165, swingMs: 560, swingJitter: 155,
-      goodMistake: 0.18, whiff: 0.13, valueBias: 0.6, moveMs: 68,
-      blurb: '手腳算快，會挑分數高的打，偶爾會失手。'
+      goodMistake: 0.18, whiff: 0.13, valueBias: 0.6, moveMs: 68
     },
     hard: {
-      key: 'hard', label: '困難', emoji: '⚡',
+      key: 'hard', emoji: '⚡',
       reactionMs: 335, reactionJitter: 100, swingMs: 430, swingJitter: 100,
-      goodMistake: 0.07, whiff: 0.07, valueBias: 1, moveMs: 44,
-      blurb: '幾乎不誤敲好人，專挑黃金鼠和大王鼠，會跟你搶尾刀。'
+      goodMistake: 0.07, whiff: 0.07, valueBias: 1, moveMs: 44
     }
   };
 
@@ -61,11 +57,14 @@
 
   function levelOf(key) { return LEVELS[key] || LEVELS.normal; }
 
-  var NAME_POOL = ['槌槌', '阿呆', '小咚', '鐵手', '眼鏡', '嘟嘟', '快手', '老練'];
+  /* 電腦對手的名字只存編號（0 ~ NAME_COUNT-1），顯示的名字由前端字典 ai.name.N 依語言決定。
+     aiName() 回傳的是不分語言的代號，只給紀錄、排序等內部用途。 */
+  var NAME_COUNT = 8;
+
+  function nameIndex(index) { return index % NAME_COUNT; }
 
   function aiName(level, index) {
-    var l = levelOf(level);
-    return NAME_POOL[index % NAME_POOL.length] + '（' + l.label + '）';
+    return 'CPU' + (nameIndex(index) + 1) + '-' + levelOf(level).key;
   }
 
   /**
@@ -171,7 +170,7 @@
     ORDER: ORDER,
     levelOf: levelOf,
     aiName: aiName,
-    NAME_POOL: NAME_POOL,
+    nameIndex: nameIndex, NAME_COUNT: NAME_COUNT,
     gridDistance: gridDistance,
     createBrain: createBrain
   };

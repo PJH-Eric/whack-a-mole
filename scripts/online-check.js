@@ -237,7 +237,7 @@ async function main() {
     await until(() => host.view.board === '6x6', 2000, '盤面改成 6x6');
     eq(host.view.board, '6x6', '房主改得動盤面');
     eq(notHost.view.board, '6x6', '其他人也同步看到新盤面');
-    ok(notHost.view.chat.some((m) => (m.text || '').indexOf('6') >= 0 || (m.text || '').indexOf('盤面') >= 0),
+    ok(notHost.view.chat.some((m) => m.system && m.key === 'sys.boardSet' && m.params.holes === 36),
       '改盤面會在聊天室留下系統訊息');
   }
 

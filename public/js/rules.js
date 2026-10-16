@@ -27,12 +27,12 @@
   /* 可以選的盤面大小。各裝置只會縮放盤面，不會把 cols/rows 對調，
    * 地洞的編號也不會變，所以規則、AI、重播都不受影響。 */
   var BOARDS = [
-    { key: '3x3', cols: 3, rows: 3, label: '3 × 3', note: '9 洞・最小' },
-    { key: '4x3', cols: 4, rows: 3, label: '4 × 3', note: '12 洞・標準' },
-    { key: '4x4', cols: 4, rows: 4, label: '4 × 4', note: '16 洞' },
-    { key: '5x4', cols: 5, rows: 4, label: '5 × 4', note: '20 洞' },
-    { key: '5x5', cols: 5, rows: 5, label: '5 × 5', note: '25 洞・熱鬧' },
-    { key: '6x6', cols: 6, rows: 6, label: '6 × 6', note: '36 洞・混亂' }
+    { key: '3x3', cols: 3, rows: 3, label: '3 × 3' },
+    { key: '4x3', cols: 4, rows: 3, label: '4 × 3' },
+    { key: '4x4', cols: 4, rows: 4, label: '4 × 4' },
+    { key: '5x4', cols: 5, rows: 4, label: '5 × 4' },
+    { key: '5x5', cols: 5, rows: 5, label: '5 × 5' },
+    { key: '6x6', cols: 6, rows: 6, label: '6 × 6' }
   ];
   for (var bi = 0; bi < BOARDS.length; bi++) BOARDS[bi].holes = BOARDS[bi].cols * BOARDS[bi].rows;
   /* 明確寫死，不要用 BOARDS[0] —— 清單順序改動不該悄悄換掉預設盤面 */
@@ -99,59 +99,48 @@
    */
   var MOLE_TYPES = {
     mole: {
-      key: 'mole', side: 'bad', label: '小土鼠', emoji: '🐹',
-      points: 10, hp: 1, upMs: 1250, w: [46, 24, 13],
-      hint: '最常見的小嘍囉，看到就敲。'
+      key: 'mole', side: 'bad', emoji: '🐹',
+      points: 10, hp: 1, upMs: 1250, w: [46, 24, 13]
     },
     swift: {
-      key: 'swift', side: 'bad', label: '疾風鼠', emoji: '💨',
-      points: 25, hp: 1, upMs: 640, w: [16, 17, 14],
-      hint: '戴著護目鏡，冒出來一下就縮回去。'
+      key: 'swift', side: 'bad', emoji: '💨',
+      points: 25, hp: 1, upMs: 640, w: [16, 17, 14]
     },
     helmet: {
-      key: 'helmet', side: 'bad', label: '鐵盔鼠', emoji: '⛑',
-      points: 44, hp: 2, upMs: 1750, w: [0, 12, 11],
-      hint: '頭上有鐵盔，要敲兩下才會倒。'
+      key: 'helmet', side: 'bad', emoji: '⛑',
+      points: 44, hp: 2, upMs: 1750, w: [0, 12, 11]
     },
     bomber: {
-      key: 'bomber', side: 'bad', label: '炸彈鼠', emoji: '💣',
-      points: 60, hp: 1, upMs: 820, w: [0, 8, 9],
-      hint: '抱著炸彈，分數高但停留很短。'
+      key: 'bomber', side: 'bad', emoji: '💣',
+      points: 60, hp: 1, upMs: 820, w: [0, 8, 9]
     },
     rainbow: {
-      key: 'rainbow', side: 'bad', label: '彩虹鼠', emoji: '🌈',
-      points: 50, hp: 1, upMs: 900, w: [0, 5, 5], buff: true,
-      hint: '敲到之後 6 秒內，你打到的正分全部加倍。'
+      key: 'rainbow', side: 'bad', emoji: '🌈',
+      points: 50, hp: 1, upMs: 900, w: [0, 5, 5], buff: true
     },
     boss: {
-      key: 'boss', side: 'bad', label: '大王鼠', emoji: '👑',
-      points: 96, hp: 3, upMs: 2700, w: [0, 3, 6],
-      hint: '又大又肥，要敲三下，最後一下的人拿雙份。'
+      key: 'boss', side: 'bad', emoji: '👑',
+      points: 96, hp: 3, upMs: 2700, w: [0, 3, 6]
     },
     golden: {
-      key: 'golden', side: 'bad', label: '黃金鼠', emoji: '✨',
-      points: 120, hp: 1, upMs: 540, w: [0, 2, 4],
-      hint: '全場最高分，但只露臉半秒，手要夠快。'
+      key: 'golden', side: 'bad', emoji: '✨',
+      points: 120, hp: 1, upMs: 540, w: [0, 2, 4]
     },
     chick: {
-      key: 'chick', side: 'good', label: '小雞', emoji: '🐤',
-      points: -15, hp: 1, upMs: 1400, w: [14, 9, 7],
-      hint: '路過的小雞，不要敲牠。'
+      key: 'chick', side: 'good', emoji: '🐤',
+      points: -15, hp: 1, upMs: 1400, w: [14, 9, 7]
     },
     bunny: {
-      key: 'bunny', side: 'good', label: '小兔子', emoji: '🐰',
-      points: -20, hp: 1, upMs: 1300, w: [14, 9, 8],
-      hint: '來借蘿蔔的鄰居，敲下去會扣分。'
+      key: 'bunny', side: 'good', emoji: '🐰',
+      points: -20, hp: 1, upMs: 1300, w: [14, 9, 8]
     },
     farmer: {
-      key: 'farmer', side: 'good', label: '農夫爺爺', emoji: '👒',
-      points: -35, hp: 1, upMs: 1500, w: [10, 8, 8],
-      hint: '這塊田的主人，千萬別敲。'
+      key: 'farmer', side: 'good', emoji: '👒',
+      points: -35, hp: 1, upMs: 1500, w: [10, 8, 8]
     },
     catshop: {
-      key: 'catshop', side: 'good', label: '貓店長', emoji: '🐱',
-      points: -50, hp: 1, upMs: 1650, w: [0, 3, 5],
-      hint: '拿著「請勿敲打」牌子的店長，扣最多分。'
+      key: 'catshop', side: 'good', emoji: '🐱',
+      points: -50, hp: 1, upMs: 1650, w: [0, 3, 5]
     }
   };
 
@@ -175,24 +164,20 @@
    */
   var PACES = {
     rookie: {
-      key: 'rookie', label: '超級新手', emoji: '🍼',
-      upScale: 2.64, spawnScale: 2.09, maxUpDelta: -1,
-      blurb: '地鼠慢慢冒、停很久，看清楚是好人壞人再敲也來得及。'
+      key: 'rookie', emoji: '🍼',
+      upScale: 2.64, spawnScale: 2.09, maxUpDelta: -1
     },
     easy: {
-      key: 'easy', label: '簡單', emoji: '🌱',
-      upScale: 1.76, spawnScale: 1.5, maxUpDelta: 0,
-      blurb: '地鼠停得久一點、冒得慢一點，剛上手玩這個。'
+      key: 'easy', emoji: '🌱',
+      upScale: 1.76, spawnScale: 1.5, maxUpDelta: 0
     },
     normal: {
-      key: 'normal', label: '普通', emoji: '🔥',
-      upScale: 1.1, spawnScale: 1.1, maxUpDelta: 0,
-      blurb: '稍微寬鬆的標準節奏，三階段仍會愈來愈快。'
+      key: 'normal', emoji: '🔥',
+      upScale: 1.1, spawnScale: 1.1, maxUpDelta: 0
     },
     hard: {
-      key: 'hard', label: '困難', emoji: '⚡',
-      upScale: 0.85, spawnScale: 0.9, maxUpDelta: 1,
-      blurb: '比其他模式緊湊，但地鼠多留一點時間，挑戰手速與判斷。'
+      key: 'hard', emoji: '⚡',
+      upScale: 0.85, spawnScale: 0.9, maxUpDelta: 1
     }
   };
   var PACE_ORDER = ['rookie', 'easy', 'normal', 'hard'];
@@ -204,10 +189,10 @@
   /* at＝這個階段從一局的幾分之幾開始。用比例而不是寫死的毫秒，
      一局長度改成 60 或 75 秒時第 3 階段才不會永遠跑不到。 */
   var STAGES = [
-    { no: 1, at: 0, label: '熱身', spawnMs: 900, jitter: 260, maxUp: 3, upScale: 1.25 },
-    { no: 2, at: 1 / 3, label: '加速', spawnMs: 640, jitter: 200, maxUp: 4, upScale: 1.00 },
+    { no: 1, at: 0, spawnMs: 900, jitter: 260, maxUp: 3, upScale: 1.25 },
+    { no: 2, at: 1 / 3, spawnMs: 640, jitter: 200, maxUp: 4, upScale: 1.00 },
     /* 倒數後段稍微收斂，避免節奏突然過快又過於擁擠。 */
-    { no: 3, at: 2 / 3, label: '狂亂', spawnMs: 480, jitter: 170, maxUp: 5, upScale: 0.90 }
+    { no: 3, at: 2 / 3, spawnMs: 480, jitter: 170, maxUp: 5, upScale: 0.90 }
   ];
 
   /**
@@ -232,7 +217,7 @@
     var k = (holes || HOLES) / HOLES;
     var P = paceOf(pace);
     return {
-      no: st.no, at: st.at, label: st.label,
+      no: st.no, at: st.at,
       upScale: st.upScale * P.upScale,
       spawnMs: Math.max(150, Math.round(st.spawnMs / k * P.spawnScale)),
       jitter: Math.max(0, Math.round(st.jitter / k * P.spawnScale)),
@@ -293,12 +278,6 @@
     return { gain: Math.round(raw * mult), multiplier: mult, base: raw };
   }
 
-  function describeMole(key) {
-    var t = typeOf(key);
-    return t.label + '（' + (t.points > 0 ? '+' : '') + t.points + '分'
-      + (t.hp > 1 ? '、' + t.hp + '下' : '') + '）';
-  }
-
   /* ------------------------------------------------------------ 玩家 */
 
   var PLAYER_COLORS = ['grape', 'mint', 'peach', 'sky', 'lemon'];
@@ -311,7 +290,8 @@
     for (var i = 0; i < MOLE_ORDER.length; i++) byType[MOLE_ORDER[i]] = 0;
     return {
       id: String(p.id),
-      name: String(p.name || ('玩家' + (index + 1))),
+      name: String(p.name || ('Player ' + (index + 1))),
+      nameIdx: p.nameIdx === undefined ? null : p.nameIdx,   // 電腦對手的名字編號，前端依語言換成名字
       color: p.color || PLAYER_COLORS[index % PLAYER_COLORS.length],
       ai: p.ai || null,
       score: 0,
@@ -473,17 +453,17 @@
    * 敲一下。共用盤面搶打先得分：同一隻地鼠誰先送到伺服器誰得分。
    * @param {string} playerId
    * @param {{moleId?:number, hole:number}} aim
-   * @returns {{ok:boolean, event?:object, error?:string, code?:string}}
+   * @returns {{ok:boolean, event?:object, key?:string, code?:string}}
    */
   function whack(state, playerId, aim, now) {
     var p = state.players[String(playerId)];
-    if (!p) return { ok: false, error: '你不在這一局裡（可能是觀戰中）。', code: 'notplayer' };
+    if (!p) return { ok: false, key: 'err.notPlayer', code: 'notplayer' };
     if (phaseOf(state, now) !== 'playing') {
-      return { ok: false, error: '現在還不能出手。', code: 'phase' };
+      return { ok: false, key: 'err.notYet', code: 'phase' };
     }
     var hole = Number(aim && aim.hole);
     if (!(hole >= 0 && hole < state.holes)) {
-      return { ok: false, error: '沒有這個地洞。', code: 'badhole' };
+      return { ok: false, key: 'err.badHole', code: 'badhole' };
     }
 
     p.swings += 1;
@@ -579,7 +559,7 @@
       var p = list[i];
       if (prevScore === null || p.score !== prevScore) { rank = i + 1; prevScore = p.score; }
       out.push({
-        rank: rank, id: p.id, name: p.name, color: p.color, ai: p.ai,
+        rank: rank, id: p.id, name: p.name, nameIdx: p.nameIdx, color: p.color, ai: p.ai,
         score: p.score, hits: p.hits, goodHits: p.goodHits, swings: p.swings,
         combo: p.combo, bestCombo: p.bestCombo, accuracy: accuracyOf(p),
         buffUntil: p.buffUntil,
@@ -600,7 +580,7 @@
       startAt: state.startAt, endAt: state.endAt,
       remainMs: remainMs(state, now),
       countdownMs: Math.max(0, state.startAt - now),
-      stage: { no: st.no, label: st.label },
+      stage: { no: st.no },
       moles: state.moles.map(function (m) {
         return {
           id: m.id, hole: m.hole, type: m.type, side: m.side,
@@ -613,19 +593,75 @@
     };
   }
 
-  /* 一行文字的事件描述，聊天室／摘要共用 */
-  function describeEvent(ev, nameOf) {
-    var who = nameOf ? nameOf(ev.by) : '有人';
-    if (ev.k === 'hit') {
-      var t = typeOf(ev.type);
-      if (t.side === 'good') return who + ' 誤敲了' + t.label + '，' + ev.gain + ' 分！';
-      if (!ev.killed) return who + ' 敲中' + t.label + '（還要 ' + ev.hpLeft + ' 下）+' + ev.gain;
-      return who + ' 打倒' + t.label + ' +' + ev.gain + (ev.combo >= COMBO_STEP ? '（' + ev.combo + ' 連擊）' : '');
+  /* Display metadata also supports server-side rule consumers. */
+  var display = {
+  "MOLE_TYPES": {
+    "mole": {
+      "label": "小土鼠",
+      "hint": "最常見的小嘍囉，看到就敲。"
+    },
+    "swift": {
+      "label": "疾風鼠",
+      "hint": "戴著護目鏡，冒出來一下就縮回去。"
+    },
+    "helmet": {
+      "label": "鐵盔鼠",
+      "hint": "頭上有鐵盔，要敲兩下才會倒。"
+    },
+    "bomber": {
+      "label": "炸彈鼠",
+      "hint": "抱著炸彈，分數高但停留很短。"
+    },
+    "rainbow": {
+      "label": "彩虹鼠",
+      "hint": "敲到之後 6 秒內，你打到的正分全部加倍。"
+    },
+    "boss": {
+      "label": "大王鼠",
+      "hint": "又大又肥，要敲三下，最後一下的人拿雙份。"
+    },
+    "golden": {
+      "label": "黃金鼠",
+      "hint": "全場最高分，但只露臉半秒，手要夠快。"
+    },
+    "chick": {
+      "label": "小雞",
+      "hint": "路過的小雞，不要敲牠。"
+    },
+    "bunny": {
+      "label": "小兔子",
+      "hint": "來借蘿蔔的鄰居，敲下去會扣分。"
+    },
+    "farmer": {
+      "label": "農夫爺爺",
+      "hint": "這塊田的主人，千萬別敲。"
+    },
+    "catshop": {
+      "label": "貓店長",
+      "hint": "拿著「請勿敲打」牌子的店長，扣最多分。"
     }
-    if (ev.k === 'escape') return typeOf(ev.type).label + '溜掉了。';
-    if (ev.k === 'miss') return who + ' 敲了個空。';
-    return '';
+  },
+  "PACES": {
+    "rookie": {
+      "label": "超級新手",
+      "blurb": "地鼠慢慢冒、停很久，看清楚是好人壞人再敲也來得及。"
+    },
+    "easy": {
+      "label": "簡單",
+      "blurb": "地鼠停得久一點、冒得慢一點，剛上手玩這個。"
+    },
+    "normal": {
+      "label": "普通",
+      "blurb": "稍微寬鬆的標準節奏，三階段仍會愈來愈快。"
+    },
+    "hard": {
+      "label": "困難",
+      "blurb": "比其他模式緊湊，但地鼠多留一點時間，挑戰手速與判斷。"
+    }
   }
+};
+  Object.keys(display.MOLE_TYPES).forEach(function (key) { Object.assign(MOLE_TYPES[key], display.MOLE_TYPES[key]); });
+  Object.keys(display.PACES).forEach(function (key) { Object.assign(PACES[key], display.PACES[key]); });
 
   return {
     COLS: COLS, ROWS: ROWS, HOLES: HOLES,
@@ -643,7 +679,6 @@
 
     typeOf: typeOf, stageAt: stageAt, weightsFor: weightsFor, pickType: pickType,
     comboMultiplier: comboMultiplier, hitUnit: hitUnit, scoreHit: scoreHit,
-    describeMole: describeMole, describeEvent: describeEvent,
     accuracyOf: accuracyOf,
 
     createMatch: createMatch, tick: tick, whack: whack, finish: finish,

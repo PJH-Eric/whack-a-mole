@@ -178,24 +178,26 @@ function broadcastChat(room, message) {
   for (const s of socketsOf(room.code)) s.emit('room:chat', { message });
 }
 
-function fail(socket, message, code) {
-  socket.emit('room:error', { message: String(message || '操作失敗'), code: code || 'invalid' });
+/* 所有給玩家看的訊息都只送「字典 key＋參數」，由各玩家的前端依自己的語言翻譯。 */
+function fail(socket, key, params, code) {
+  socket.emit('room:error', { key: key || 'err.failed', params: params || {}, code: code || 'invalid' });
 }
 
-/** 把 clientId 轉成顯示名稱，事件訊息用得到 */
-function nameOf(room, id) {
-  if (!id) return '有人';
-  const m = room.member(id);
-  if (m) return m.name;
-  const ai = room.aiSeats.find((s) => s.id === id);
-  return ai ? ai.name : '有人';
+/** 把 room.* 回傳的失敗結果（{key, params, code}）轉成 room:error */
+function failRes(socket, res) {
+  fail(socket, res.key, res.params, res.code);
+}
+
+/** 電腦對手在訊息參數裡的樣子：前端會依語言換成名字 */
+function aiRef(seat) {
+  return { name: seat.name, nameIdx: seat.nameIdx, ai: seat.level };
 }
 
 /* ------------------------------------------------------------ Socket */
 
 io.on('connection', (socket) => {
   socket.data.clientId = null;
-  socket.data.name = '玩家';
+  socket.data.name = 'Player';
   socket.data.roomCode = null;
 
   socket.on('latency:ping', (_sentAt, ack) => { if (typeof ack === 'function') ack(); });
@@ -205,7 +207,7 @@ io.on('connection', (socket) => {
     let id = String(p.clientId || '').trim();
     if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) id = crypto.randomBytes(12).toString('hex');
     socket.data.clientId = id;
-    socket.data.name = sanitizeName(p.name, '玩家');
+    socket.data.name = sanitizeName(p.name, 'Player');
     if (typeof ack === 'function') {
       ack({ ok: true, clientId: id, name: socket.data.name, serverTime: now(), roundMs: ROUND_MS });
     }
@@ -220,7 +222,7 @@ io.on('connection', (socket) => {
   socket.on('lobby:unsubscribe', () => { lobbySockets.delete(socket); });
 
   socket.on('room:create', (payload, ack) => {
-    if (!socket.data.clientId) return fail(socket, '連線還沒準備好，請重新整理頁面。', 'nosession');
+    if (!socket.data.clientId) return fail(socket, 'err.noSession', null, 'nosession');
     const p = payload || {};
     socket.data.name = sanitizeName(p.name, socket.data.name);
     const res = store.create(socket.data.clientId, {
@@ -232,22 +234,22 @@ io.on('connection', (socket) => {
       roundMs: p.roundSec ? Rules.roundMsOf(p.roundSec) : ROUND_MS,
       now: now()
     });
-    if (!res.ok) { fail(socket, res.error, res.code); if (typeof ack === 'function') ack(res); return; }
+    if (!res.ok) { failRes(socket, res); if (typeof ack === 'function') ack(res); return; }
     const room = res.room;
     attach(socket, room.code);
-    room.system(socket.data.name + ' 開了這間房。按「準備好了」再開始，也可以先加電腦對手。', now());
+    room.system('sys.roomOpened', { name: socket.data.name }, now());
     syncRoom(room);
     syncLobby();
     if (typeof ack === 'function') ack({ ok: true, code: room.code });
   });
 
   socket.on('room:join', (payload, ack) => {
-    if (!socket.data.clientId) return fail(socket, '連線還沒準備好，請重新整理頁面。', 'nosession');
+    if (!socket.data.clientId) return fail(socket, 'err.noSession', null, 'nosession');
     const p = payload || {};
     const room = store.get(p.code);
     if (!room) {
-      const e = { ok: false, error: '找不到這個房間，可能已經關閉或房號打錯了。', code: 'gone' };
-      fail(socket, e.error, e.code);
+      const e = { ok: false, key: 'err.roomNotFound', code: 'gone' };
+      failRes(socket, e);
       if (typeof ack === 'function') ack(e);
       return;
     }
@@ -258,12 +260,12 @@ io.on('connection', (socket) => {
       token: p.token ? String(p.token) : null,
       now: now()
     });
-    if (!res.ok) { fail(socket, res.error, res.code); if (typeof ack === 'function') ack(res); return; }
+    if (!res.ok) { failRes(socket, res); if (typeof ack === 'function') ack(res); return; }
     attach(socket, room.code);
     if (res.reconnected) {
-      room.system(res.member.name + ' 重新連上線了。', now());
+      room.system('sys.reconnected', { name: res.member.name }, now());
     } else {
-      room.system(res.member.name + ' 加入了（' + (res.member.role === 'player' ? '玩家' : '觀戰') + '）。', now());
+      room.system(res.member.role === 'player' ? 'sys.joinedPlayer' : 'sys.joinedSpectator', { name: res.member.name }, now());
     }
     syncRoom(room);
     syncLobby();
@@ -282,7 +284,7 @@ io.on('connection', (socket) => {
     const room = store.get(p.code);
     if (!room) {
       return typeof ack === 'function'
-        && ack({ ok: false, error: '這個邀請連結指向的房間已經不存在了。', code: 'gone' });
+        && ack({ ok: false, key: 'err.inviteRoomGone', code: 'gone' });
     }
     const res = room.checkInvite(String(p.token || ''), now());
     if (typeof ack === 'function') {
@@ -295,70 +297,70 @@ io.on('connection', (socket) => {
   function withRoom(handler) {
     return (payload, ack) => {
       const room = store.get(socket.data.roomCode);
-      if (!room) return fail(socket, '你已經不在任何房間裡了。', 'gone');
+      if (!room) return fail(socket, 'err.noRoom', null, 'gone');
       handler(room, payload || {}, ack);
     };
   }
 
   socket.on('room:ready', withRoom((room, p) => {
     const res = room.setReady(socket.data.clientId, !!p.ready);
-    if (!res.ok) return fail(socket, res.error, res.code);
+    if (!res.ok) return failRes(socket, res);
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:sit', withRoom((room) => {
     const res = room.becomePlayer(socket.data.clientId);
-    if (!res.ok) return fail(socket, res.error, res.code);
-    room.system(res.member.name + ' 從觀戰改成下場對戰。', now());
+    if (!res.ok) return failRes(socket, res);
+    room.system('sys.sat', { name: res.member.name }, now());
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:stand', withRoom((room) => {
     const res = room.becomeSpectator(socket.data.clientId);
-    if (!res.ok) return fail(socket, res.error, res.code);
-    room.system(res.member.name + ' 改成觀戰。', now());
+    if (!res.ok) return failRes(socket, res);
+    room.system('sys.stood', { name: res.member.name }, now());
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:addAi', withRoom((room, p) => {
     const res = room.addAi(socket.data.clientId, p.level);
-    if (!res.ok) return fail(socket, res.error, res.code);
-    room.system('加入了電腦對手 ' + res.seat.name + '。', now());
+    if (!res.ok) return failRes(socket, res);
+    room.system('sys.aiAdded', { who: aiRef(res.seat) }, now());
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:removeAi', withRoom((room, p) => {
     const res = room.removeAi(socket.data.clientId, String(p.id || ''));
-    if (!res.ok) return fail(socket, res.error, res.code);
-    room.system('移除了電腦對手 ' + res.seat.name + '。', now());
+    if (!res.ok) return failRes(socket, res);
+    room.system('sys.aiRemoved', { who: aiRef(res.seat) }, now());
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:setRound', withRoom((room, p) => {
     const res = room.setRound(socket.data.clientId, p.roundSec);
-    if (!res.ok) return fail(socket, res.error, res.code);
-    if (res.changed) room.system('一局長度改成 ' + res.sec + ' 秒。', now());
+    if (!res.ok) return failRes(socket, res);
+    if (res.changed) room.system('sys.roundSet', { sec: res.sec }, now());
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:setPace', withRoom((room, p) => {
     const res = room.setPace(socket.data.clientId, String(p.pace || ''));
-    if (!res.ok) return fail(socket, res.error, res.code);
-    if (res.changed) room.system('難度改成「' + res.label + '」。', now());
+    if (!res.ok) return failRes(socket, res);
+    if (res.changed) room.system('sys.paceSet', { pace: { key: 'pace.' + res.pace + '.label' } }, now());
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:setBoard', withRoom((room, p) => {
     const res = room.setBoard(socket.data.clientId, String(p.board || ''));
-    if (!res.ok) return fail(socket, res.error, res.code);
-    if (res.changed) room.system('盤面改成 ' + res.label + '（' + res.holes + ' 個地洞）。', now());
+    if (!res.ok) return failRes(socket, res);
+    if (res.changed) room.system('sys.boardSet', { board: res.label, holes: res.holes }, now());
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:start', withRoom((room) => {
     const res = room.start(socket.data.clientId, now(), { countdownMs: COUNTDOWN_MS });
-    if (!res.ok) return fail(socket, res.error, res.code);
-    room.system('準備開打！這一局的地鼠序列種子是 ' + room.seed + '。', now());
+    if (!res.ok) return failRes(socket, res);
+    room.system('sys.getReady', { seed: room.seed }, now());
     syncRoom(room); syncLobby();
   }));
 
@@ -366,37 +368,36 @@ io.on('connection', (socket) => {
   socket.on('room:whack', withRoom((room, p) => {
     const t = now();
     const res = room.whack(socket.data.clientId, { hole: Number(p.hole), moleId: Number(p.moleId) || null }, t);
-    if (!res.ok) return fail(socket, res.error, res.code);
+    if (!res.ok) return failRes(socket, res);
     for (const s of socketsOf(room.code)) s.emit('room:events', { t, events: [res.event] });
   }));
 
   socket.on('room:rematch', withRoom((room) => {
     const res = room.voteRematch(socket.data.clientId, now());
-    if (!res.ok) return fail(socket, res.error, res.code);
+    if (!res.ok) return failRes(socket, res);
     const me = room.member(socket.data.clientId);
-    room.system(res.started
-      ? '大家都同意，新的一局開始了！'
-      : me.name + ' 想再來一局（' + res.votes + '/' + res.need + '）。', now());
+    if (res.started) room.system('sys.rematchStarted', {}, now());
+    else room.system('sys.rematchVote', { name: me.name, votes: res.votes, need: res.need }, now());
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:reset', withRoom((room) => {
     const res = room.backToLobby(socket.data.clientId, now());
-    if (!res.ok) return fail(socket, res.error, res.code);
-    room.system('房主把房間拉回準備階段，可以換座位或調整電腦對手了。', now());
+    if (!res.ok) return failRes(socket, res);
+    room.system('sys.backToLobby', {}, now());
     syncRoom(room); syncLobby();
   }));
 
   socket.on('room:chat', withRoom((room, p) => {
     const res = room.say(socket.data.clientId, p.text, now());
-    if (!res.ok) return fail(socket, res.error, res.code);
+    if (!res.ok) return failRes(socket, res);
     broadcastChat(room, res.message);
   }));
 
   socket.on('room:mute', withRoom((room, p) => {
     const res = room.mute(socket.data.clientId, String(p.targetId || ''), p.seconds, now());
-    if (!res.ok) return fail(socket, res.error, res.code);
-    room.system(res.name + ' 被房主暫時禁言 ' + res.seconds + ' 秒。', now());
+    if (!res.ok) return failRes(socket, res);
+    room.system('sys.muted', { name: res.name, sec: res.seconds }, now());
     syncRoom(room);
   }));
 
@@ -404,7 +405,7 @@ io.on('connection', (socket) => {
     const res = room.createInvite(socket.data.clientId, {
       role: p.role, ttlMs: Number(p.ttlMinutes) * 60000, maxUses: p.maxUses, now: now()
     });
-    if (!res.ok) { fail(socket, res.error, res.code); return typeof ack === 'function' && ack(res); }
+    if (!res.ok) { failRes(socket, res); return typeof ack === 'function' && ack(res); }
     syncRoom(room);
     if (typeof ack === 'function') {
       ack({
@@ -416,7 +417,7 @@ io.on('connection', (socket) => {
 
   socket.on('room:revokeInvite', withRoom((room, p) => {
     const res = room.revokeInvite(socket.data.clientId, String(p.token || ''));
-    if (!res.ok) return fail(socket, res.error, res.code);
+    if (!res.ok) return failRes(socket, res);
     syncRoom(room);
   }));
 
@@ -425,8 +426,8 @@ io.on('connection', (socket) => {
     detach(socket);
     socket.emit('room:left', { ok: true });
     /* 最後一個人走了就立刻關房，不留空房佔房號 */
-    if (res.ok && res.emptied) { closeRoom(room, '房間沒有人了，已經自動關閉。'); syncLobby(); return; }
-    if (res.ok) room.system(res.name + ' 離開了房間。', now());
+    if (res.ok && res.emptied) { closeRoom(room, 'err.roomEmpty'); syncLobby(); return; }
+    if (res.ok) room.system('sys.left', { name: res.name }, now());
     syncRoom(room);
     syncLobby();
   }));
@@ -440,7 +441,7 @@ io.on('connection', (socket) => {
     if (!member) return;
     /* 先標記為斷線並保留座位，讓重新整理的人可以憑 clientId 回到原位 */
     room.disconnect(socket.data.clientId, now());
-    room.system(member.name + ' 斷線了，座位會先保留一分鐘。', now());
+    room.system('sys.disconnected', { name: member.name }, now());
     syncRoom(room);
     syncLobby();
   });
@@ -470,9 +471,10 @@ setInterval(() => {
       if (room.phase === 'over') {
         const rank = Rules.standings(room.state);
         const champ = rank[0];
-        room.system(room.state.draw
-          ? '時間到！' + rank.filter((r) => r.rank === 1).map((r) => r.name).join('、') + ' 同分平手。'
-          : '時間到！冠軍是 ' + champ.name + '，' + champ.score + ' 分。', t);
+        const ref = (p) => (p.nameIdx === null || p.nameIdx === undefined
+          ? { name: p.name } : { name: p.name, nameIdx: p.nameIdx, ai: p.ai });
+        if (room.state.draw) room.system('sys.timeUpTie', { names: rank.filter((r) => r.rank === 1).map(ref) }, t);
+        else room.system('sys.timeUpWinner', { who: ref(champ), score: champ.score }, t);
       }
       syncRoom(room);
       syncLobby();
@@ -488,10 +490,10 @@ setInterval(() => {
  * 關掉一間房並把還連著的人踢回大廳。
  * @param {boolean} [alreadyRemoved] 回收流程已經把房間從 store 拿掉了，不用再拿一次
  */
-function closeRoom(room, reason, alreadyRemoved) {
+function closeRoom(room, key, alreadyRemoved) {
   if (!alreadyRemoved) store.close(room.code);
   for (const s of socketsOf(room.code)) {
-    s.emit('room:closed', { reason: reason });
+    s.emit('room:closed', { key: key });
     s.data.roomCode = null;
   }
   roomSockets.delete(room.code);
@@ -503,7 +505,7 @@ setInterval(() => {
   const t = now();
   const swept = store.sweep(t);
   for (const room of swept.changed) syncRoom(room);
-  for (const room of swept.closed) closeRoom(room, '房間沒有人了，已經自動關閉。', true);
+  for (const room of swept.closed) closeRoom(room, 'err.roomEmpty', true);
   if (swept.changed.length || swept.closed.length) syncLobby();
 }, 2000);
 
@@ -541,7 +543,7 @@ if (require.main === module) {
     console.log('  允許來源：  ' + (allowAll ? '不限制（* — 正式環境請設定 GAME_ALLOWED_ORIGIN）' : ALLOWED.join(', ')));
     console.log('  一局長度：  ' + Math.round(ROUND_MS / 1000) + ' 秒，開賽倒數 ' + Math.round(COUNTDOWN_MS / 1000) + ' 秒');
     console.log('  最多同時：  ' + Rules.MAX_PLAYERS + ' 人共用一組地洞');
-    console.log('  電腦難度：  ' + AI.ORDER.map((k) => AI.levelOf(k).label).join(' / '));
+    console.log('  電腦難度：  ' + AI.ORDER.join(' / '));
     console.log('----------------------------------------');
   });
 }

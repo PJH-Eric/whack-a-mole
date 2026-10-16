@@ -42,13 +42,13 @@
     try {
       parsed = new URL(raw);
     } catch (e) {
-      return { url: null, source: source, status: 'invalid', error: '不是合法的絕對網址：' + raw };
+      return { url: null, source: source, status: 'invalid', error: { key: 'cfg.notUrl', params: { url: raw } } };
     }
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      return { url: null, source: source, status: 'invalid', error: '只接受 http 或 https：' + raw };
+      return { url: null, source: source, status: 'invalid', error: { key: 'cfg.badProtocol', params: { url: raw } } };
     }
     if (pageProtocol === 'https:' && parsed.protocol === 'http:') {
-      return { url: null, source: source, status: 'invalid', error: 'https 頁面不能連 http 伺服器（混合內容會被瀏覽器擋掉）：' + raw };
+      return { url: null, source: source, status: 'invalid', error: { key: 'cfg.mixedContent', params: { url: raw } } };
     }
     return {
       url: parsed.origin + parsed.pathname.replace(/\/+$/, ''),
@@ -68,7 +68,7 @@
   var r = resolve(INJECTED, queryParam(loc.search, 'server'), loc.protocol, loc.origin);
 
   if (r.status === 'invalid' && typeof console !== 'undefined' && console.warn) {
-    console.warn('[config] server URL 設定有問題，線上功能會停用：' + r.error);
+    console.warn('[config] server URL is invalid, online play is disabled: ' + r.error.key + ' ' + r.error.params.url);
   }
 
   var Config = {
@@ -77,6 +77,7 @@
     status: r.status,
     /* 'none' ｜ 'same-origin' ｜ 'injected' ｜ 'query' */
     source: r.source,
+    /* 設定錯誤時是 { key, params }（字典 key），前端用 I18N.t 翻譯；沒有錯誤是 null */
     error: r.error,
 
     isOnlineEnabled: function () { return r.status === 'ok'; },
@@ -112,11 +113,12 @@
 
     /** 線上連線狀態列使用的一行說明 */
     describe: function () {
-      if (Config.status === 'invalid') return '設定有誤（線上已停用）';
-      if (!Config.serverUrl) return '未設定（只能玩單機）';
+      var tr = function (k) { return w.I18N ? w.I18N.t(k) : k; };
+      if (Config.status === 'invalid') return tr('cfg.invalid');
+      if (!Config.serverUrl) return tr('cfg.unset');
       var host = Config.serverUrl.replace(/^https?:\/\//, '');
-      var tag = Config.source === 'query' ? '（網址參數）'
-        : (Config.source === 'injected' ? '（建置注入）' : '（同源）');
+      var tag = Config.source === 'query' ? tr('cfg.srcQuery')
+        : (Config.source === 'injected' ? tr('cfg.srcInjected') : tr('cfg.srcSame'));
       return host + tag;
     },
 

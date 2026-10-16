@@ -15,7 +15,15 @@
   var loading = null;
   var listeners = {};
   var status = 'idle';    // idle | loading | connecting | connected | error | offline
-  var lastError = '';
+  var lastError = null;   // { key, params }（字典 key），畫面端用 I18N.t 翻譯
+
+  /** 帶字典 key 的 Error：message 只當開發用備援，畫面顯示請用 key/params */
+  function keyedError(key, params) {
+    var e = new Error(key);
+    e.key = key;
+    e.params = params || {};
+    return e;
+  }
 
   function emitLocal(evt, payload) {
     var list = listeners[evt];
@@ -34,10 +42,10 @@
     };
   }
 
-  function setStatus(next, message) {
+  function setStatus(next, msg) {
     status = next;
-    lastError = message || '';
-    emitLocal('status', { status: status, message: lastError });
+    lastError = msg || null;
+    emitLocal('status', { status: status, key: lastError ? lastError.key : null, params: lastError ? lastError.params : null });
   }
 
   /** socket.io 用戶端腳本是由伺服器提供的，所以要從 server URL 載入 */
@@ -45,7 +53,7 @@
     if (w.io) return Promise.resolve();
     if (loading) return loading;
     var src = Config.url('/socket.io/socket.io.js');
-    if (!src) return Promise.reject(new Error('沒有設定遊戲伺服器位址。'));
+    if (!src) return Promise.reject(keyedError('net.noServerUrl'));
     setStatus('loading');
     loading = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
@@ -53,7 +61,7 @@
       s.async = true;
       s.onload = function () { resolve(); };
       s.onerror = function () {
-        reject(new Error('連不到遊戲伺服器（' + Config.describe() + '），請確認伺服器有開著。'));
+        reject(keyedError('net.cannotReach', { where: Config.describe() }));
       };
       document.head.appendChild(s);
     });
@@ -66,8 +74,9 @@
    */
   function connect(identity) {
     if (!Config.isOnlineEnabled()) {
-      setStatus('offline', Config.error || '目前沒有可用的遊戲伺服器，只能玩單機。');
-      return Promise.reject(new Error(lastError));
+      var offline = Config.error || { key: 'net.noServer', params: {} };
+      setStatus('offline', offline);
+      return Promise.reject(keyedError(offline.key, offline.params));
     }
     if (socket && socket.connected) return Promise.resolve(socket);
 
@@ -89,10 +98,12 @@
         emitLocal('reconnected', {});
       });
       socket.on('disconnect', function (reason) {
-        setStatus('connecting', '連線中斷（' + reason + '），正在重試…');
+        setStatus('connecting', { key: 'net.dropped', params: { reason: reason } });
       });
       socket.on('connect_error', function (err) {
-        setStatus('error', '連不上伺服器：' + (err && err.message ? err.message : '未知錯誤'));
+        setStatus('error', err && err.message
+          ? { key: 'net.connectError', params: { reason: err.message } }
+          : { key: 'net.connectErrorUnknown' });
       });
 
       ['lobby:rooms', 'room:sync', 'room:events', 'room:chat', 'room:error', 'room:closed', 'room:left']
@@ -102,7 +113,7 @@
 
       return waitHello(identity);
     }).catch(function (err) {
-      setStatus('error', err.message || String(err));
+      setStatus('error', err.key ? { key: err.key, params: err.params } : { key: 'net.connectError', params: { reason: err.message || String(err) } });
       throw err;
     });
   }
@@ -118,7 +129,7 @@
       var timer = setTimeout(function () {
         if (done) return;
         done = true;
-        reject(new Error('伺服器沒有回應（免費方案冷啟動可能要十幾秒，請再試一次）。'));
+        reject(keyedError('net.noResponse'));
       }, 15000);
       var finish = function () {
         if (done) return;
@@ -131,7 +142,7 @@
             emitLocal('hello', res);        /* 帶 serverTime，app.js 用來校時 */
             resolve(socket);
           }
-          else reject(new Error('伺服器拒絕連線。'));
+          else reject(keyedError('net.refused'));
         });
       };
       if (socket.connected) finish();
@@ -141,7 +152,7 @@
 
   function send(evt, payload, ack) {
     if (!socket || !socket.connected) {
-      emitLocal('room:error', { message: '目前沒有連線，動作沒有送出去。請等重新連線後再試。', code: 'offline' });
+      emitLocal('room:error', { key: 'net.offlineSend', params: {}, code: 'offline' });
       return false;
     }
     if (ack) socket.emit(evt, payload || {}, ack);
@@ -160,6 +171,6 @@
     send: send,
     disconnect: disconnect,
     isConnected: function () { return !!socket && socket.connected; },
-    status: function () { return { status: status, message: lastError }; }
+    status: function () { return { status: status, key: lastError ? lastError.key : null, params: lastError ? lastError.params : null }; }
   };
 }(window));

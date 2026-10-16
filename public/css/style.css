@@ -588,3 +588,13 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
   .chatbar .field,.chat-form input,.chatform input,
   #chat-input,#chatInput,#room-chatinput,#game-chatinput{font-size:16px}
 }
+
+/* Global language and settings controls remain reachable at every viewport size. */
+.lang-toggle { position: fixed; top: calc(10px + env(safe-area-inset-top)); right: calc(70px + env(safe-area-inset-right)); min-width: 48px; min-height: 48px; padding: 8px; border: 2px solid #4a3b55; border-radius: 14px; background: #fff0de; color: #4a3b55; font: 800 16px/1.2 system-ui, sans-serif; cursor: pointer; box-shadow: 0 4px 0 #cfb99f; z-index: 1001; }
+.lang-toggle:focus-visible { outline: 3px solid #287dac; outline-offset: 3px; }
+.settings-fab { min-width: 48px; min-height: 48px; }
+.panel-head h2, .setrow label, .seatrow .nm, .rmeta { min-width: 0; overflow-wrap: anywhere; }
+.settings-card, .panel { max-width: 100%; box-sizing: border-box; }
+html[lang="en"] .home-title, html[lang="en"] h1 { overflow-wrap: anywhere; }
+
+@media(max-width:600px) { .hud { padding-right: 116px; flex-wrap: wrap; height: auto; } }

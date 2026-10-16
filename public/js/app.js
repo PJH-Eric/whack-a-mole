@@ -50,7 +50,7 @@
   var toastTimer = 0;
   function toast(msg, ms) {
     var t = $('toast');
-    t.textContent = msg;
+    t.textContent = w.I18N.message(msg);
     t.hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { t.hidden = true; }, ms || 2600);
@@ -60,6 +60,15 @@
     return String(s === undefined || s === null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+
+  /** Bot display names follow the interface language; human names remain untouched. */
+  function playerName(player) {
+    if (!player || (!player.ai && !player.level)) return player ? player.name : '';
+    var index = player.nameIdx == null ? 0 : player.nameIdx;
+    var name = w.I18N.t('ai.name.' + index);
+    return name + ' (' + w.I18N.t('pace.' + (player.ai || player.level) + '.label') + ')';
   }
 
   function colorHex(key) { return Rules.PLAYER_COLOR_HEX[key] || '#A48FDB'; }
@@ -82,8 +91,8 @@
     return '<div class="dexcard ' + t.side + '">'
       + '<div class="pic">' + SvgUI.moleSvg(key, t.hp) + '</div>'
       + '<div class="txt"><div class="nm">' + esc(t.label) + '</div>'
-      + '<div class="pt">' + (t.points > 0 ? '+' : '') + t.points + ' 分'
-      + (t.hp > 1 ? '・要 ' + t.hp + ' 下' : '') + '</div>'
+      + '<div class="pt">' + (t.points > 0 ? '+' : '') + t.points + (globalThis.I18N ? globalThis.I18N.t("text.124") : " 分")
+      + (t.hp > 1 ? (globalThis.I18N ? globalThis.I18N.t("text.123") : "・要 ") + t.hp + (globalThis.I18N ? globalThis.I18N.t("text.122") : " 下") : '') + '</div>'
       + (mini ? '' : '<div class="ds">' + esc(t.hint) + '</div>')
       + '</div></div>';
   }
@@ -168,7 +177,7 @@
     $('set-mark').checked = Store.bigMark();
     $('set-hammer').checked = Store.hammerCursor();
     $('set-audio-note').textContent = Sound.isUnlocked()
-      ? '' : '瀏覽器規定要先碰一下畫面才會出聲，按任何一顆按鈕就會解鎖。';
+      ? '' : (globalThis.I18N ? globalThis.I18N.t("text.121") : "瀏覽器規定要先碰一下畫面才會出聲，按任何一顆按鈕就會解鎖。");
   }
 
   function applyDisplayPrefs() {
@@ -219,7 +228,7 @@
 
       if (ev.k === 'spawn') { Sound.play('pop'); continue; }
 
-      if (ev.k === 'go') { Sound.play('start'); Board.shout('開始！', 'go'); continue; }
+      if (ev.k === 'go') { Sound.play('start'); Board.shout((globalThis.I18N ? globalThis.I18N.t("text.120") : "開始！"), 'go'); continue; }
 
       if (ev.k === 'end') { continue; }
 
@@ -246,14 +255,14 @@
         } else if (ev.type === 'golden' || ev.type === 'rainbow') {
           Sound.play('shiny');
           if (mine) Sound.vibrate([12, 30, 18]);
-          if (mine && ev.type === 'rainbow') { Sound.play('buff', 0.15); Board.shout('分數加倍 6 秒！', 'buff', 1100); }
+          if (mine && ev.type === 'rainbow') { Sound.play('buff', 0.15); Board.shout((globalThis.I18N ? globalThis.I18N.t("text.119") : "分數加倍 6 秒！"), 'buff', 1100); }
         } else {
           Sound.play(t.hp > 1 ? 'smash' : 'bonk');
           if (mine) Sound.vibrate(t.hp > 1 ? [14, 24, 20] : 12);
         }
         if (mine && ev.combo && ev.combo % Rules.COMBO_STEP === 0) {
           Sound.play('combo');
-          Board.shout(ev.combo + ' 連擊！', 'combo', 800);
+          Board.shout(ev.combo + (globalThis.I18N ? globalThis.I18N.t("text.118") : " 連擊！"), 'combo', 800);
         }
       }
     }
@@ -328,12 +337,12 @@
     var seed = RNG.randomSeed();
     var now = Date.now();
 
-    var roster = [{ id: 'me', name: S.name || '我' }];
+    var roster = [{ id: 'me', name: S.name || (globalThis.I18N ? globalThis.I18N.t("text.023") : "我") }];
     S.solo.brains = {};
     S.solo.ids = ['me'];
     for (var i = 0; i < count; i++) {
       var id = 'ai:' + i;
-      roster.push({ id: id, name: AI.aiName(level, i), ai: level });
+      roster.push({ id: id, name: AI.aiName(level, i), ai: level, nameIdx: i });
       S.solo.brains[id] = AI.createBrain(level, 'solo:' + seed + ':' + i);
       S.solo.ids.push(id);
     }
@@ -459,7 +468,7 @@
     var sec = v && v.roundSec ? v.roundSec : Rules.roundSecOf(Store.roundSec());
     $('hud-clock').textContent = sec;
     $('hud-time').classList.remove('low');
-    $('hud-stage').textContent = '準備中';
+    $('hud-stage').textContent = (globalThis.I18N ? globalThis.I18N.t("text.117") : "準備中");
     $('hud-stage').className = 'hud-stage';
     $('hud-score').textContent = '0';
     $('hud-combo').hidden = true;
@@ -481,11 +490,11 @@
 
     var st = $('hud-stage');
     /* 「第 N 階段・」包成 span：窄螢幕用 CSS 收起來，HUD 才排得下一行 */
-    st.innerHTML = over ? '時間到'
-      : '<span class="stage-no">第 ' + m.stage.no + ' 階段・</span>' + esc(m.stage.label);
+    st.innerHTML = over ? (globalThis.I18N ? globalThis.I18N.t("text.071") : "時間到")
+      : (globalThis.I18N ? globalThis.I18N.t("text.116") : "<span class=\"stage-no\">第 ") + m.stage.no + (globalThis.I18N ? globalThis.I18N.t("text.115") : " 階段・</span>") + esc(w.I18N.t('stage.' + m.stage.no));
     st.className = 'hud-stage' + (!over && m.stage.no > 1 ? ' s' + m.stage.no : '');
     if (m.phase === 'playing' && m.stage.no !== S.lastStage) {
-      if (S.lastStage) { Sound.play('stage'); Board.shout(m.stage.label + '！地鼠變快了', 'stage', 1100); }
+      if (S.lastStage) { Sound.play('stage'); Board.shout(w.I18N.t('stage.' + m.stage.no) + (globalThis.I18N ? globalThis.I18N.t("text.114") : "！地鼠變快了"), 'stage', 1100); }
       S.lastStage = m.stage.no;
     }
 
@@ -517,20 +526,20 @@
     var v = S.view;
     if (S.mode !== 'online' || !v) return;
     var you = v.you;
-    var role = you.role === 'player' ? '玩家' : (you.role === 'spectator' ? '觀戰' : '訪客');
-    $('sum-room').innerHTML = '<b>' + esc(v.code) + '</b>　' + role + (you.host ? '・房主' : '')
-      + '　' + (v.seats - v.seatsFree) + '/' + v.seats + ' 人';
+    var role = you.role === 'player' ? (globalThis.I18N ? globalThis.I18N.t("text.003") : "玩家") : (you.role === 'spectator' ? (globalThis.I18N ? globalThis.I18N.t("text.034") : "觀戰") : (globalThis.I18N ? globalThis.I18N.t("text.110") : "訪客"));
+    $('sum-room').innerHTML = '<b>' + esc(v.code) + '</b>　' + role + (you.host ? (globalThis.I18N ? globalThis.I18N.t("text.109") : "・房主") : '')
+      + '　' + (v.seats - v.seatsFree) + '/' + v.seats + (globalThis.I18N ? globalThis.I18N.t("text.108") : " 人");
 
     var rows = [];
     v.members.filter(function (mm) { return mm.role === 'player'; }).forEach(function (mm, i) {
       rows.push({
         name: mm.name, hex: colorHex(Rules.PLAYER_COLORS[i % 5]), me: mm.id === you.id,
-        tag: mm.connected === false ? '斷線' : (mm.ready ? '準備好' : '還沒準備')
+        get tag() { return mm.connected === false ? (globalThis.I18N ? globalThis.I18N.t("text.113") : "斷線") : (mm.ready ? (globalThis.I18N ? globalThis.I18N.t("text.094") : "準備好") : (globalThis.I18N ? globalThis.I18N.t("text.093") : "還沒準備")); }
       });
     });
-    (v.ai || []).forEach(function (a) { rows.push({ name: a.name, hex: '#C8BFD1', tag: '電腦' }); });
+    (v.ai || []).forEach(function (a) { rows.push({ name: playerName(a), hex: '#C8BFD1', get tag() { return globalThis.I18N ? globalThis.I18N.t("text.112") : "電腦"; } }); });
     v.members.filter(function (mm) { return mm.role === 'spectator'; }).forEach(function (mm) {
-      rows.push({ name: mm.name, hex: '#C8BFD1', me: mm.id === you.id, tag: '觀戰' });
+      rows.push({ name: mm.name, hex: '#C8BFD1', me: mm.id === you.id, get tag() { return globalThis.I18N ? globalThis.I18N.t("text.034") : "觀戰"; } });
     });
     $('rank-list').innerHTML = rows.map(function (r, i) {
       return '<li class="rankrow' + (r.me ? ' me' : '') + '" style="--who:' + r.hex + '">'
@@ -541,8 +550,8 @@
     }).join('');
 
     var bd = Rules.boardOf(v.board);
-    $('my-stat').textContent = '一局 ' + v.roundSec + ' 秒・難度「' + Rules.paceOf(v.pace).label
-      + '」・盤面 ' + bd.label + '（' + bd.holes + ' 洞）';
+    $('my-stat').textContent = (globalThis.I18N ? globalThis.I18N.t("text.087") : "一局 ") + v.roundSec + (globalThis.I18N ? globalThis.I18N.t("text.086") : " 秒・難度「") + Rules.paceOf(v.pace).label
+      + (globalThis.I18N ? globalThis.I18N.t("text.085") : "」・盤面 ") + bd.label + '（' + bd.holes + (globalThis.I18N ? globalThis.I18N.t("text.111") : " 洞）");
     $('live-bar').innerHTML = '';
     $('live-bar').dataset.html = '';
     paintSideActions();
@@ -556,12 +565,12 @@
     var room = $('sum-room');
     if (S.mode === 'online' && S.view) {
       var you = S.view.you;
-      var role = you.role === 'player' ? '玩家' : (you.role === 'spectator' ? '觀戰' : '訪客');
-      room.innerHTML = '<b>' + esc(S.view.code) + '</b>　' + role + (you.host ? '・房主' : '')
-        + '　' + (S.view.seats - S.view.seatsFree) + '/' + S.view.seats + ' 人';
+      var role = you.role === 'player' ? (globalThis.I18N ? globalThis.I18N.t("text.003") : "玩家") : (you.role === 'spectator' ? (globalThis.I18N ? globalThis.I18N.t("text.034") : "觀戰") : (globalThis.I18N ? globalThis.I18N.t("text.110") : "訪客"));
+      room.innerHTML = '<b>' + esc(S.view.code) + '</b>　' + role + (you.host ? (globalThis.I18N ? globalThis.I18N.t("text.109") : "・房主") : '')
+        + '　' + (S.view.seats - S.view.seatsFree) + '/' + S.view.seats + (globalThis.I18N ? globalThis.I18N.t("text.108") : " 人");
     } else {
-      room.innerHTML = '單機・' + esc(AI.levelOf(Store.aiLevel()).label)
-        + '・對手 ' + (S.solo.ids.length - 1) + ' 個';
+      room.innerHTML = (globalThis.I18N ? globalThis.I18N.t("text.107") : "單機・") + esc(AI.levelOf(Store.aiLevel()).label)
+        + (globalThis.I18N ? globalThis.I18N.t("text.106") : "・對手 ") + (S.solo.ids.length - 1) + (globalThis.I18N ? globalThis.I18N.t("text.105") : " 個");
     }
 
     /* 即時排行：名次、名字、分數。連擊只在真的有連擊時用小字帶出來。 */
@@ -569,9 +578,9 @@
     $('rank-list').innerHTML = m.standings.map(function (p) {
       return '<li class="rankrow' + (p.id === me ? ' me' : '') + '" style="--who:' + colorHex(p.color) + '">'
         + '<span class="no">' + p.rank + '</span>'
-        + '<span class="nm">' + esc(p.name) + '</span>'
+        + '<span class="nm">' + esc(playerName(p)) + '</span>'
         + '<span class="sc">' + p.score
-        + (p.combo >= 2 ? '<small>' + p.combo + ' 連</small>' : '') + '</span>'
+        + (p.combo >= 2 ? '<small>' + p.combo + (globalThis.I18N ? globalThis.I18N.t("text.104") : " 連</small>") : '') + '</span>'
         + '</li>';
     }).join('');
 
@@ -584,7 +593,7 @@
     var lbHtml = showLive
       ? m.standings.slice(0, 5).map(function (p) {
         return '<span class="lchip' + (p.id === me ? ' me' : '') + '" style="--who:' + colorHex(p.color) + '">'
-          + '<b>' + p.rank + '</b><span class="ln">' + esc(p.name) + '</span><i>' + p.score + '</i></span>';
+          + '<b>' + p.rank + '</b><span class="ln">' + esc(playerName(p)) + '</span><i>' + p.score + '</i></span>';
       }).join('')
       : '';
     if (lb.dataset.html !== lbHtml) { lb.dataset.html = lbHtml; lb.innerHTML = lbHtml; }
@@ -592,15 +601,15 @@
     /* 我的表現：一行就好，分數已經在 HUD 上了 */
     var r = myRow();
     $('my-stat').textContent = r
-      ? '命中 ' + r.hits + '・誤敲 ' + r.goodHits + '・準度 ' + Math.round((r.accuracy || 0) * 100) + '%'
-        + (r.bestCombo >= 2 ? '・最佳連擊 ' + r.bestCombo : '')
-      : '觀戰中，看得到完整盤面';
+      ? (globalThis.I18N ? globalThis.I18N.t("text.103") : "命中 ") + r.hits + (globalThis.I18N ? globalThis.I18N.t("text.069") : "・誤敲 ") + r.goodHits + (globalThis.I18N ? globalThis.I18N.t("text.102") : "・準度 ") + Math.round((r.accuracy || 0) * 100) + '%'
+        + (r.bestCombo >= 2 ? (globalThis.I18N ? globalThis.I18N.t("text.068") : "・最佳連擊 ") + r.bestCombo : '')
+      : (globalThis.I18N ? globalThis.I18N.t("text.101") : "觀戰中，看得到完整盤面");
 
     /* 彩虹加倍剩餘時間顯示在 HUD 上 */
     var refNow = S.mode === 'solo' ? Date.now() : srvNow();
     var buffLeft = m.phase === 'playing' && r && r.buffUntil ? Math.max(0, r.buffUntil - refNow) : 0;
     $('hud-buff').hidden = buffLeft <= 0;
-    if (buffLeft > 0) $('hud-buff').textContent = '🌈 加倍中 ' + Math.ceil(buffLeft / 1000) + 's';
+    if (buffLeft > 0) $('hud-buff').textContent = (globalThis.I18N ? globalThis.I18N.t("text.100") : "🌈 加倍中 ") + Math.ceil(buffLeft / 1000) + 's';
 
     paintSideActions();
   }
@@ -610,11 +619,11 @@
     var html = '';
     if (S.mode === 'online' && S.view) {
       var can = S.view.you.can || {};
-      if (can.invite) html += '<button class="btn3d" data-color="sky" data-act="invite">🔗 邀請</button>';
-      if (can.sit) html += '<button class="btn3d" data-color="mint" data-act="sit">下場對戰</button>';
-      if (can.stand) html += '<button class="btn3d" data-color="cream" data-act="stand">改成觀戰</button>';
+      if (can.invite) html += (globalThis.I18N ? globalThis.I18N.t("text.099") : "<button class=\"btn3d\" data-color=\"sky\" data-act=\"invite\">🔗 邀請</button>");
+      if (can.sit) html += (globalThis.I18N ? globalThis.I18N.t("text.062") : "<button class=\"btn3d\" data-color=\"mint\" data-act=\"sit\">下場對戰</button>");
+      if (can.stand) html += (globalThis.I18N ? globalThis.I18N.t("text.061") : "<button class=\"btn3d\" data-color=\"cream\" data-act=\"stand\">改成觀戰</button>");
     }
-    html += '<button class="btn3d" data-color="cream" data-act="quit">離開</button>';
+    html += (globalThis.I18N ? globalThis.I18N.t("text.098") : "<button class=\"btn3d\" data-color=\"cream\" data-act=\"quit\">離開</button>");
     if (box.dataset.html !== html) {
       box.dataset.html = html;
       box.innerHTML = html;
@@ -631,27 +640,27 @@
     $('ov-wait').hidden = !waiting;
     if (!waiting) return;
 
-    $('ov-wait-title').textContent = '準備開始・房號 ' + v.code;
+    $('ov-wait-title').textContent = (globalThis.I18N ? globalThis.I18N.t("text.097") : "準備開始・房號 ") + v.code;
 
     var seats = [];
     v.members.filter(function (m) { return m.role === 'player'; }).forEach(function (m, i) {
       seats.push('<div class="seatrow" style="--who:' + colorHex(Rules.PLAYER_COLORS[i % 5]) + '">'
         + '<span class="nm">' + esc(m.name) + '</span>'
-        + (m.host ? '<span class="tag host">房主</span>' : '')
-        + (m.connected ? '' : '<span class="tag off">斷線</span>')
-        + '<span class="tag' + (m.ready ? ' ready' : '') + '">' + (m.ready ? '準備好' : '還沒準備') + '</span>'
+        + (m.host ? (globalThis.I18N ? globalThis.I18N.t("text.096") : "<span class=\"tag host\">房主</span>") : '')
+        + (m.connected ? '' : (globalThis.I18N ? globalThis.I18N.t("text.095") : "<span class=\"tag off\">斷線</span>"))
+        + '<span class="tag' + (m.ready ? ' ready' : '') + '">' + (m.ready ? (globalThis.I18N ? globalThis.I18N.t("text.094") : "準備好") : (globalThis.I18N ? globalThis.I18N.t("text.093") : "還沒準備")) + '</span>'
         + '</div>');
     });
     v.ai.forEach(function (a) {
       seats.push('<div class="seatrow" style="--who:#C8BFD1">'
-        + '<span class="nm">' + esc(a.name) + '</span><span class="tag ai">電腦</span>'
-        + (v.you.can.manageAi ? '<button class="x" data-rmai="' + esc(a.id) + '" aria-label="移除 ' + esc(a.name) + '">✕</button>' : '')
+        + '<span class="nm">' + esc(playerName(a)) + (globalThis.I18N ? globalThis.I18N.t("text.092") : "</span><span class=\"tag ai\">電腦</span>")
+        + (v.you.can.manageAi ? '<button class="x" data-rmai="' + esc(a.id) + (globalThis.I18N ? globalThis.I18N.t("text.091") : "\" aria-label=\"移除 ") + esc(playerName(a)) + '">✕</button>' : '')
         + '</div>');
     });
     var specs = v.members.filter(function (m) { return m.role === 'spectator'; });
     if (specs.length) {
-      seats.push('<div class="seatrow" style="--who:#C8BFD1"><span class="nm">觀戰 '
-        + specs.length + ' 人：' + esc(specs.map(function (m) { return m.name; }).join('、')) + '</span></div>');
+      seats.push((globalThis.I18N ? globalThis.I18N.t("text.090") : "<div class=\"seatrow\" style=\"--who:#C8BFD1\"><span class=\"nm\">觀戰 ")
+        + specs.length + (globalThis.I18N ? globalThis.I18N.t("text.089") : " 人：") + esc(specs.map(function (m) { return m.name; }).join('、')) + '</span></div>');
     }
     $('seat-list').innerHTML = seats.join('');
 
@@ -672,7 +681,7 @@
         var on = sec === v.roundSec;
         return '<button class="btn3d" data-color="' + (on ? 'mint' : 'cream') + '"'
           + ' data-setround="' + sec + '" role="radio" aria-checked="' + on + '">'
-          + sec + ' 秒</button>';
+          + sec + (globalThis.I18N ? globalThis.I18N.t("text.088") : " 秒</button>");
       }).join('');
       SvgUI.decorateAll($('round-pick'));
     }
@@ -683,7 +692,7 @@
         var on = P.key === v.pace;
         return '<button class="btn3d" data-color="' + (on ? 'mint' : 'cream') + '"'
           + ' data-setpace="' + esc(P.key) + '" role="radio" aria-checked="' + on + '"'
-          + ' title="' + esc(P.blurb) + '">' + P.emoji + ' ' + esc(P.label) + '</button>';
+          + ' title="' + esc(w.I18N.t('pace.' + P.key + '.blurb')) + '">' + P.emoji + ' ' + esc(w.I18N.t('pace.' + P.key + '.label')) + '</button>';
       }).join('');
       SvgUI.decorateAll($('pace-pick'));
     }
@@ -703,24 +712,24 @@
 
     var note = [];
     var bd = Rules.boardOf(v.board);
-    note.push('一局 ' + v.roundSec + ' 秒・難度「' + Rules.paceOf(v.pace).label + '」・盤面 ' + bd.label + '（' + bd.holes + ' 個地洞）。');
-    note.push('座位 ' + (v.seats - v.seatsFree) + '/' + v.seats + '，最多 ' + v.seats + ' 人共用同一組地洞。');
-    if (v.you.role === 'spectator') note.push('你目前是觀戰身分。');
-    if (v.you.startBlockedBy) note.push(v.you.startBlockedBy + '。');
+    note.push((globalThis.I18N ? globalThis.I18N.t("text.087") : "一局 ") + v.roundSec + (globalThis.I18N ? globalThis.I18N.t("text.086") : " 秒・難度「") + Rules.paceOf(v.pace).label + (globalThis.I18N ? globalThis.I18N.t("text.085") : "」・盤面 ") + bd.label + '（' + bd.holes + (globalThis.I18N ? globalThis.I18N.t("text.084") : " 個地洞）。"));
+    note.push((globalThis.I18N ? globalThis.I18N.t("text.083") : "座位 ") + (v.seats - v.seatsFree) + '/' + v.seats + (globalThis.I18N ? globalThis.I18N.t("text.082") : "，最多 ") + v.seats + (globalThis.I18N ? globalThis.I18N.t("text.081") : " 人共用同一組地洞。"));
+    if (v.you.role === 'spectator') note.push((globalThis.I18N ? globalThis.I18N.t("text.080") : "你目前是觀戰身分。"));
+    if (v.you.startBlockedBy) note.push(w.I18N.message(v.you.startBlockedBy));
     $('ov-wait-note').textContent = note.join(' ');
 
     var btns = '';
     if (v.you.can.ready) {
       btns += '<button class="btn3d big" data-color="' + (v.you.ready ? 'cream' : 'mint') + '" data-act="ready">'
-        + (v.you.ready ? '取消準備' : '✔ 準備好了') + '</button>';
+        + (v.you.ready ? (globalThis.I18N ? globalThis.I18N.t("text.079") : "取消準備") : (globalThis.I18N ? globalThis.I18N.t("text.078") : "✔ 準備好了")) + '</button>';
     }
     if (v.you.host) {
       btns += '<button class="btn3d big" data-color="grape" data-act="start"'
-        + (v.you.can.start ? '' : ' disabled') + '>▶ 開始這一局</button>';
+        + (v.you.can.start ? '' : ' disabled') + (globalThis.I18N ? globalThis.I18N.t("text.077") : ">▶ 開始這一局</button>");
     }
-    if (v.you.can.sit) btns += '<button class="btn3d" data-color="mint" data-act="sit">下場對戰</button>';
-    if (v.you.can.stand) btns += '<button class="btn3d" data-color="cream" data-act="stand">改成觀戰</button>';
-    if (v.you.can.invite) btns += '<button class="btn3d" data-color="sky" data-act="invite">🔗 邀請朋友</button>';
+    if (v.you.can.sit) btns += (globalThis.I18N ? globalThis.I18N.t("text.062") : "<button class=\"btn3d\" data-color=\"mint\" data-act=\"sit\">下場對戰</button>");
+    if (v.you.can.stand) btns += (globalThis.I18N ? globalThis.I18N.t("text.061") : "<button class=\"btn3d\" data-color=\"cream\" data-act=\"stand\">改成觀戰</button>");
+    if (v.you.can.invite) btns += (globalThis.I18N ? globalThis.I18N.t("text.076") : "<button class=\"btn3d\" data-color=\"sky\" data-act=\"invite\">🔗 邀請朋友</button>");
     $('ov-wait-btns').innerHTML = btns;
     SvgUI.decorateAll($('ov-wait-btns'));
   }
@@ -733,33 +742,33 @@
     var champs = m.standings.filter(function (p) { return p.rank === 1; });
     var iWon = champs.some(function (p) { return p.id === me; });
     $('ov-result-title').textContent = m.draw
-      ? '平手！' + champs.map(function (p) { return p.name; }).join('、') + ' 同分'
-      : (iWon ? '你贏了！' : (champs[0] ? champs[0].name + ' 獲勝' : '時間到'));
+      ? (globalThis.I18N ? globalThis.I18N.t("text.075") : "平手！") + champs.map(function (p) { return playerName(p); }).join('、') + (globalThis.I18N ? globalThis.I18N.t("text.074") : " 同分")
+      : (iWon ? (globalThis.I18N ? globalThis.I18N.t("text.073") : "你贏了！") : (champs[0] ? champs[0].name + (globalThis.I18N ? globalThis.I18N.t("text.072") : " 獲勝") : (globalThis.I18N ? globalThis.I18N.t("text.071") : "時間到")));
 
     $('result-table').innerHTML = m.standings.map(function (p) {
       return '<div class="resrow' + (p.rank === 1 ? ' win' : '') + '" style="--who:' + colorHex(p.color) + '">'
         + '<span class="no">' + p.rank + '</span>'
-        + '<span class="nm">' + esc(p.name)
-        + '<small>敲中 ' + p.hits + '・誤敲 ' + p.goodHits + '・最佳連擊 ' + p.bestCombo
-        + '・命中率 ' + Math.round((p.accuracy || 0) * 100) + '%</small></span>'
+        + '<span class="nm">' + esc(playerName(p))
+        + (globalThis.I18N ? globalThis.I18N.t("text.070") : "<small>敲中 ") + p.hits + (globalThis.I18N ? globalThis.I18N.t("text.069") : "・誤敲 ") + p.goodHits + (globalThis.I18N ? globalThis.I18N.t("text.068") : "・最佳連擊 ") + p.bestCombo
+        + (globalThis.I18N ? globalThis.I18N.t("text.067") : "・命中率 ") + Math.round((p.accuracy || 0) * 100) + '%</small></span>'
         + '<span class="sc">' + p.score + '</span></div>';
     }).join('');
 
     var btns = '';
     if (S.mode === 'solo') {
-      btns += '<button class="btn3d big" data-color="mint" data-act="again">🔁 再玩一次</button>'
-        + '<button class="btn3d" data-color="cream" data-act="quit">回主選單</button>';
+      btns += (globalThis.I18N ? globalThis.I18N.t("text.066") : "<button class=\"btn3d big\" data-color=\"mint\" data-act=\"again\">🔁 再玩一次</button>")
+        + (globalThis.I18N ? globalThis.I18N.t("text.065") : "<button class=\"btn3d\" data-color=\"cream\" data-act=\"quit\">回主選單</button>");
     } else if (S.view) {
       var v = S.view;
       if (v.you.can.rematch) {
-        btns += '<button class="btn3d big" data-color="mint" data-act="rematch">🔁 再來一局（'
+        btns += (globalThis.I18N ? globalThis.I18N.t("text.064") : "<button class=\"btn3d big\" data-color=\"mint\" data-act=\"rematch\">🔁 再來一局（")
           + v.rematch.votes + '/' + v.rematch.need + '）</button>';
       }
-      if (v.you.can.reset) btns += '<button class="btn3d" data-color="sky" data-act="reset">回房間調整</button>';
+      if (v.you.can.reset) btns += (globalThis.I18N ? globalThis.I18N.t("text.063") : "<button class=\"btn3d\" data-color=\"sky\" data-act=\"reset\">回房間調整</button>");
       /* 觀戰的人看完結算最想做的事就是下場打下一局，按鈕直接放在這裡 */
-      if (v.you.can.sit) btns += '<button class="btn3d" data-color="mint" data-act="sit">下場對戰</button>';
-      if (v.you.can.stand) btns += '<button class="btn3d" data-color="cream" data-act="stand">改成觀戰</button>';
-      btns += '<button class="btn3d" data-color="cream" data-act="quit">離開房間</button>';
+      if (v.you.can.sit) btns += (globalThis.I18N ? globalThis.I18N.t("text.062") : "<button class=\"btn3d\" data-color=\"mint\" data-act=\"sit\">下場對戰</button>");
+      if (v.you.can.stand) btns += (globalThis.I18N ? globalThis.I18N.t("text.061") : "<button class=\"btn3d\" data-color=\"cream\" data-act=\"stand\">改成觀戰</button>");
+      btns += (globalThis.I18N ? globalThis.I18N.t("text.060") : "<button class=\"btn3d\" data-color=\"cream\" data-act=\"quit\">離開房間</button>");
     }
     $('ov-result-btns').innerHTML = btns;
     SvgUI.decorateAll($('ov-result-btns'));
@@ -771,13 +780,14 @@
    * ============================================================ */
 
   function connStatus(st) {
+    S.connection = st;
     var dot = $('conn-dot'), txt = $('conn-text');
     var map = {
-      idle: ['', '尚未連線'], loading: ['warn', '正在載入連線程式…'],
-      connecting: ['warn', '連線中…（免費方案冷啟動可能要十幾秒）'],
-      connected: ['ok', '已連上 ' + Config.describe()],
-      error: ['bad', st.message || '連線失敗'],
-      offline: ['bad', st.message || '沒有可用的伺服器，只能玩單機']
+      idle: ['', (globalThis.I18N ? globalThis.I18N.t("text.059") : "尚未連線")], loading: ['warn', (globalThis.I18N ? globalThis.I18N.t("text.058") : "正在載入連線程式…")],
+      connecting: ['warn', (globalThis.I18N ? globalThis.I18N.t("text.057") : "連線中…（免費方案冷啟動可能要十幾秒）")],
+      connected: ['ok', (globalThis.I18N ? globalThis.I18N.t("text.056") : "已連上 ") + Config.describe()],
+      error: ['bad', (st.key ? w.I18N.message(st) : st.message) || (globalThis.I18N ? globalThis.I18N.t("text.055") : "連線失敗")],
+      offline: ['bad', (st.key ? w.I18N.message(st) : st.message) || (globalThis.I18N ? globalThis.I18N.t("text.054") : "沒有可用的伺服器，只能玩單機")]
     };
     var m = map[st.status] || ['', st.status];
     dot.className = 'dot ' + m[0];
@@ -786,33 +796,34 @@
   }
 
   function connect() {
-    S.name = ($('lobby-nick').value || Store.nick() || '').trim() || '玩家';
+    S.name = ($('lobby-nick').value || Store.nick() || '').trim() || (globalThis.I18N ? globalThis.I18N.t("text.003") : "玩家");
     Store.nick(S.name);
     return Online.connect({ clientId: S.clientId, name: S.name })
       .then(function () {
         Online.send('lobby:subscribe', {});
         return true;
       })
-      .catch(function (err) { toast(err.message || '連不上伺服器'); throw err; });
+      .catch(function (err) { toast((err.key ? w.I18N.message(err) : err.message) || (globalThis.I18N ? globalThis.I18N.t("text.053") : "連不上伺服器")); throw err; });
   }
 
   function paintRoomList(payload) {
+    S.roomList = payload;
     $('rooms-count').textContent = payload.total || 0;
     var list = payload.rooms || [];
     if (!list.length) {
-      $('room-list').innerHTML = '<div class="empty">目前沒有公開房間。按上面的「建立房間」開一間，把房號或邀請連結給朋友就好。</div>';
+      $('room-list').innerHTML = (globalThis.I18N ? globalThis.I18N.t("text.052") : "<div class=\"empty\">目前沒有公開房間。按上面的「建立房間」開一間，把房號或邀請連結給朋友就好。</div>");
       return;
     }
     $('room-list').innerHTML = list.map(function (r) {
-      var tag = r.phase === 'playing' || r.phase === 'countdown' ? '<span class="tag playing">對戰中</span>'
-        : (r.phase === 'over' ? '<span class="tag over">剛打完</span>' : '<span class="tag">等待中</span>');
+      var tag = r.phase === 'playing' || r.phase === 'countdown' ? (globalThis.I18N ? globalThis.I18N.t("text.051") : "<span class=\"tag playing\">對戰中</span>")
+        : (r.phase === 'over' ? (globalThis.I18N ? globalThis.I18N.t("text.050") : "<span class=\"tag over\">剛打完</span>") : (globalThis.I18N ? globalThis.I18N.t("text.049") : "<span class=\"tag\">等待中</span>"));
       return '<div class="roomrow">'
-        + '<span class="rname">' + esc(r.name) + '<small>房號 ' + esc(r.code) + '</small></span>'
+        + '<span class="rname">' + esc(r.name) + (globalThis.I18N ? globalThis.I18N.t("text.048") : "<small>房號 ") + esc(r.code) + '</small></span>'
         + tag
-        + '<span class="rmeta">玩家 ' + (r.players + r.ai) + '/' + r.seats
-        + (r.spectators ? '・觀戰 ' + r.spectators : '') + '</span>'
+        + (globalThis.I18N ? globalThis.I18N.t("text.047") : "<span class=\"rmeta\">玩家 ") + (r.players + r.ai) + '/' + r.seats
+        + (r.spectators ? (globalThis.I18N ? globalThis.I18N.t("text.046") : "・觀戰 ") + r.spectators : '') + '</span>'
         + '<button class="btn3d small" data-color="mint" data-joincode="' + esc(r.code) + '">'
-        + (r.seatsFree > 0 && r.phase !== 'playing' ? '加入' : '觀戰') + '</button>'
+        + (r.seatsFree > 0 && r.phase !== 'playing' ? (globalThis.I18N ? globalThis.I18N.t("text.045") : "加入") : (globalThis.I18N ? globalThis.I18N.t("text.034") : "觀戰")) + '</button>'
         + '</div>';
     }).join('');
     SvgUI.decorateAll($('room-list'));
@@ -827,12 +838,12 @@
         Online.send('room:join', { code: code, name: S.name, token: token || null, role: role || null }, function (res) {
           if (!res || !res.ok) {
             if (!S.view) S.mode = null;
-            toast((res && res.error) || '加入失敗');
+            toast((res && (res.key ? w.I18N.message(res) : w.I18N.message(res.error))) || (globalThis.I18N ? globalThis.I18N.t("text.044") : "加入失敗"));
             return resolve(false);
           }
           S.mode = 'online';
-          if (res.downgraded) toast('玩家席位已滿，你先以觀戰身分進來了。', 3600);
-          else if (res.waiting) toast('這局已經開打，你先觀戰，下一局就能下場。', 3600);
+          if (res.downgraded) toast((globalThis.I18N ? globalThis.I18N.t("text.043") : "玩家席位已滿，你先以觀戰身分進來了。"), 3600);
+          else if (res.waiting) toast((globalThis.I18N ? globalThis.I18N.t("text.042") : "這局已經開打，你先觀戰，下一局就能下場。"), 3600);
           else if (res.note) toast(res.note, 3600);
           Sound.play('join');
           resolve(true);
@@ -850,7 +861,7 @@
       if (!it.invite) return joinRoom(it.room);
       return new Promise(function (resolve) {
         Online.send('invite:check', { code: it.room, token: it.invite }, function (res) {
-          if (!res || !res.ok) { toast((res && res.error) || '這個邀請連結不能用了。', 4200); return resolve(false); }
+          if (!res || !res.ok) { toast((res && (res.key ? w.I18N.message(res) : w.I18N.message(res.error))) || (globalThis.I18N ? globalThis.I18N.t("text.041") : "這個邀請連結不能用了。"), 4200); return resolve(false); }
           if (res.note) toast(res.note, 3800);
           joinRoom(it.room, it.invite, res.role).then(resolve);
         });
@@ -873,7 +884,7 @@
       Online.send('room:create', payload, function (res) {
         if (!res || !res.ok) {
           if (!S.view) S.mode = null;
-          return toast((res && res.error) || '建立失敗');
+          return toast((res && (res.key ? w.I18N.message(res) : w.I18N.message(res.error))) || (globalThis.I18N ? globalThis.I18N.t("text.040") : "建立失敗"));
         }
         S.mode = 'online';
         Sound.play('join');
@@ -926,7 +937,7 @@
     var log = $('chat-log');
     var atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 30;
     log.innerHTML = list.map(function (m) {
-      if (m.system) return '<div class="msg sys">' + esc(m.text) + '</div>';
+      if (m.system) return '<div class="msg sys">' + esc(w.I18N.message(m)) + '</div>';
       var cls = 'msg' + (m.from === me ? ' me' : '') + (m.role === 'spectator' ? ' spec' : '');
       return '<div class="' + cls + '"><span class="who">' + esc(m.name) + '</span>' + esc(m.text) + '</div>';
     }).join('');
@@ -956,19 +967,19 @@
   function paintInviteList(list) {
     var box = $('invite-list');
     if (!list || !list.length) {
-      box.innerHTML = '<div class="empty">還沒有產生過邀請連結。</div>';
+      box.innerHTML = (globalThis.I18N ? globalThis.I18N.t("text.039") : "<div class=\"empty\">還沒有產生過邀請連結。</div>");
       return;
     }
     var now = srvNow();
     box.innerHTML = list.map(function (iv) {
       var dead = iv.revoked || iv.expiresAt < now || iv.uses >= iv.maxUses;
-      var why = iv.revoked ? '已撤銷' : (iv.expiresAt < now ? '已過期'
-        : (iv.uses >= iv.maxUses ? '次數用完' : Math.ceil((iv.expiresAt - now) / 60000) + ' 分鐘後過期'));
+      var why = iv.revoked ? (globalThis.I18N ? globalThis.I18N.t("text.038") : "已撤銷") : (iv.expiresAt < now ? (globalThis.I18N ? globalThis.I18N.t("text.037") : "已過期")
+        : (iv.uses >= iv.maxUses ? (globalThis.I18N ? globalThis.I18N.t("text.036") : "次數用完") : Math.ceil((iv.expiresAt - now) / 60000) + (globalThis.I18N ? globalThis.I18N.t("text.035") : " 分鐘後過期")));
       return '<div class="invrow' + (dead ? ' dead' : '') + '">'
-        + '<span class="txt">' + (iv.role === 'spectator' ? '觀戰' : '玩家') + '・'
-        + iv.uses + '/' + iv.maxUses + ' 次・' + why + '</span>'
-        + (dead ? '' : '<button class="iconbtn" data-copyinv="' + esc(iv.token) + '" aria-label="複製這個邀請連結">⧉</button>'
-          + '<button class="iconbtn" data-revoke="' + esc(iv.token) + '" aria-label="撤銷這個邀請連結">✕</button>')
+        + '<span class="txt">' + (iv.role === 'spectator' ? (globalThis.I18N ? globalThis.I18N.t("text.034") : "觀戰") : (globalThis.I18N ? globalThis.I18N.t("text.003") : "玩家")) + '・'
+        + iv.uses + '/' + iv.maxUses + (globalThis.I18N ? globalThis.I18N.t("text.033") : " 次・") + why + '</span>'
+        + (dead ? '' : '<button class="iconbtn" data-copyinv="' + esc(iv.token) + (globalThis.I18N ? globalThis.I18N.t("text.032") : "\" aria-label=\"複製這個邀請連結\">⧉</button>")
+          + '<button class="iconbtn" data-revoke="' + esc(iv.token) + (globalThis.I18N ? globalThis.I18N.t("text.031") : "\" aria-label=\"撤銷這個邀請連結\">✕</button>"))
         + '</div>';
     }).join('');
   }
@@ -979,16 +990,16 @@
       ttlMinutes: Number($('inv-ttl').value),
       maxUses: Number($('inv-uses').value)
     }, function (res) {
-      if (!res || !res.ok) return toast((res && res.error) || '產生失敗');
+      if (!res || !res.ok) return toast((res && (res.key ? w.I18N.message(res) : w.I18N.message(res.error))) || (globalThis.I18N ? globalThis.I18N.t("text.030") : "產生失敗"));
       var url = Config.inviteUrl(S.view.code, res.token);
       $('invite-url').value = url;
       $('invite-out').hidden = false;
-      copyText(url, '邀請連結已經複製，貼給朋友就可以了。');
+      copyText(url, (globalThis.I18N ? globalThis.I18N.t("text.029") : "邀請連結已經複製，貼給朋友就可以了。"));
     });
   }
 
   function copyText(text, okMsg) {
-    var done = function () { toast(okMsg || '已複製'); };
+    var done = function () { toast(okMsg || (globalThis.I18N ? globalThis.I18N.t("text.028") : "已複製")); };
     if (w.navigator && w.navigator.clipboard && w.navigator.clipboard.writeText) {
       w.navigator.clipboard.writeText(text).then(done).catch(function () { fallback(); });
     } else fallback();
@@ -997,7 +1008,7 @@
       i.hidden = false;
       i.select();
       try { document.execCommand('copy'); done(); }
-      catch (e) { toast('複製失敗，請手動選取連結複製。'); }
+      catch (e) { toast((globalThis.I18N ? globalThis.I18N.t("text.027") : "複製失敗，請手動選取連結複製。")); }
     }
   }
 
@@ -1055,9 +1066,9 @@
         ? !!(S.view && S.view.phase === 'playing' && S.view.you.role === 'player')
         : !!(S.match && S.match.phase === 'playing');
       if (live) {
-        askConfirm('離開這一局？', S.mode === 'online'
-          ? '這一局還沒打完，你的分數會留在排行榜上。'
-          : '這一局還沒打完，離開就不會計入戰績。', leaveGame);
+        askConfirm((globalThis.I18N ? globalThis.I18N.t("text.026") : "離開這一局？"), S.mode === 'online'
+          ? (globalThis.I18N ? globalThis.I18N.t("text.025") : "這一局還沒打完，你的分數會留在排行榜上。")
+          : (globalThis.I18N ? globalThis.I18N.t("text.024") : "這一局還沒打完，離開就不會計入戰績。"), leaveGame);
         return;
       }
       leaveGame();
@@ -1118,7 +1129,7 @@
     /* 單機設定 */
     $('solo-nick').addEventListener('change', function () { Store.nick(this.value.trim()); });
     $('b-solo-start').addEventListener('click', function () {
-      S.name = ($('solo-nick').value || '').trim() || '我';
+      S.name = ($('solo-nick').value || '').trim() || (globalThis.I18N ? globalThis.I18N.t("text.023") : "我");
       Store.nick(S.name);
       startSolo();
     });
@@ -1128,7 +1139,7 @@
     $('b-create').addEventListener('click', createRoom);
     $('b-join').addEventListener('click', function () {
       var code = ($('join-code').value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      if (code.length < 4) return toast('請輸入完整的房號。');
+      if (code.length < 4) return toast((globalThis.I18N ? globalThis.I18N.t("text.022") : "請輸入完整的房號。"));
       /* 從邀請連結進來的話要帶著 token，不然私人房間會被擋在門外 */
       if (S.joinIntent && S.joinIntent.room === code && S.joinIntent.invite) return enterByIntent();
       joinRoom(code);
@@ -1149,7 +1160,7 @@
       e.preventDefault();
       var v = $('chat-input').value.trim();
       if (!v) return;
-      if (S.mode !== 'online') return toast('單機模式沒有聊天室。');
+      if (S.mode !== 'online') return toast((globalThis.I18N ? globalThis.I18N.t("text.021") : "單機模式沒有聊天室。"));
       Online.send('room:chat', { text: v });
       $('chat-input').value = '';
     });
@@ -1172,7 +1183,7 @@
     $('set-hammer').addEventListener('change', function () { Store.hammerCursor(this.checked); applyDisplayPrefs(); });
     $('b-settings-reset').addEventListener('click', function () {
       Sound.resetDefaults(); Store.resetDefaults(); applyDisplayPrefs(); syncSettingsUi();
-      toast('已恢復預設設定。');
+      toast((globalThis.I18N ? globalThis.I18N.t("text.020") : "已恢復預設設定。"));
     });
 
     /* 邀請彈窗 */
@@ -1183,13 +1194,13 @@
 
     /* 戰績 */
     $('b-stats-reset').addEventListener('click', function () {
-      askConfirm('清除本機戰績？', '清除後無法復原，確定要繼續嗎？', function () {
+      askConfirm((globalThis.I18N ? globalThis.I18N.t("text.019") : "清除本機戰績？"), (globalThis.I18N ? globalThis.I18N.t("text.018") : "清除後無法復原，確定要繼續嗎？"), function () {
         try {
           localStorage.removeItem(Store.KEY.stats);
           localStorage.removeItem(Store.KEY.best);
         } catch (err) {}
         paintStats();
-        toast('戰績已清除。');
+        toast((globalThis.I18N ? globalThis.I18N.t("text.017") : "戰績已清除。"));
       });
     });
 
@@ -1227,8 +1238,8 @@
     var rs = Rules.roundSecOf(Store.roundSec());
     $('opt-round').innerHTML = Rules.ROUND_SECONDS.map(function (sec) {
       return '<button class="pickcard" type="button" role="radio" data-v="' + sec + '"'
-        + ' aria-checked="' + (sec === rs) + '"><b>' + sec + ' 秒</b><span>'
-        + (sec === 60 ? '快一場' : (sec === 75 ? '中等' : '完整一局')) + '</span></button>';
+        + ' aria-checked="' + (sec === rs) + '"><b>' + sec + (globalThis.I18N ? globalThis.I18N.t("text.016") : " 秒</b><span>")
+        + (sec === 60 ? (globalThis.I18N ? globalThis.I18N.t("text.015") : "快一場") : (sec === 75 ? (globalThis.I18N ? globalThis.I18N.t("text.014") : "中等") : (globalThis.I18N ? globalThis.I18N.t("text.013") : "完整一局"))) + '</span></button>';
     }).join('');
 
     var bd = Rules.boardOf(Store.board()).key;
@@ -1242,10 +1253,10 @@
   function paintStats() {
     var s = Store.stats(), b = Store.best();
     var cells = [
-      ['單機勝', s.solo.win], ['單機敗', s.solo.lose],
-      ['線上勝', s.online.win], ['線上敗', s.online.lose],
-      ['最高分', b.score || 0], ['最長連擊', b.combo || 0],
-      ['最佳命中率', Math.round((b.accuracy || 0) * 100) + '%']
+      [(globalThis.I18N ? globalThis.I18N.t("text.012") : "單機勝"), s.solo.win], [(globalThis.I18N ? globalThis.I18N.t("text.011") : "單機敗"), s.solo.lose],
+      [(globalThis.I18N ? globalThis.I18N.t("text.010") : "線上勝"), s.online.win], [(globalThis.I18N ? globalThis.I18N.t("text.009") : "線上敗"), s.online.lose],
+      [(globalThis.I18N ? globalThis.I18N.t("text.008") : "最高分"), b.score || 0], [(globalThis.I18N ? globalThis.I18N.t("text.007") : "最長連擊"), b.combo || 0],
+      [(globalThis.I18N ? globalThis.I18N.t("text.006") : "最佳命中率"), Math.round((b.accuracy || 0) * 100) + '%']
     ];
     $('stat-grid').innerHTML = cells.map(function (c) {
       return '<div class="statcard"><b>' + c[1] + '</b><span>' + c[0] + '</span></div>';
@@ -1272,8 +1283,8 @@
       S.view.chat = (S.view.chat || []).concat([p.message]).slice(-40);
       paintChat(S.view.chat);
     });
-    Online.on('room:error', function (p) { toast(p.message || '操作失敗'); });
-    Online.on('room:closed', function (p) { toast(p.reason || '房間已關閉'); leaveGame(); });
+    Online.on('room:error', function (p) { toast(w.I18N.message(p.key ? p : p.message) || (globalThis.I18N ? globalThis.I18N.t("text.005") : "操作失敗")); });
+    Online.on('room:closed', function (p) { toast(w.I18N.message(p.key ? p : p.reason) || (globalThis.I18N ? globalThis.I18N.t("text.004") : "房間已關閉")); leaveGame(); });
     Online.on('room:left', function () { Sound.play('leave'); });
     Online.on('reconnected', function () {
       if (S.mode === 'online' && S.view) {
@@ -1285,6 +1296,21 @@
   /* ------------------------------------------------------------ 啟動 */
 
   function boot() {
+
+    w.I18N.mountToggle({ after: $('b-settings') });
+    w.I18N.onChange(function () {
+      S.sigs = {};
+      if (S.connection) connStatus(S.connection);
+      if (S.roomList) paintRoomList(S.roomList);
+      buildDex(); paintSoloOptions(); paintStats(); syncSettingsUi();
+      if (S.view) paintChat(S.view.chat);
+      paintWaitOverlay();
+      paintHud(); paintSummary(); paintSideActions(); paintWaitOverlay();
+      if (S.match && S.match.phase === 'over') showResult();
+      var link = document.querySelector('.lobby-home-link');
+      if (link) link.href = w.I18N.withLang(link.href);
+    });
+
     SvgUI.bgDeco($('bgdeco'));
     $('logo').innerHTML = SvgUI.logo();
     buildDex();
@@ -1313,12 +1339,12 @@
     var nick = Store.nick();
     $('solo-nick').value = nick;
     $('lobby-nick').value = nick;
-    S.name = nick || '玩家';
+    S.name = nick || (globalThis.I18N ? globalThis.I18N.t("text.003") : "玩家");
 
     /* 沒有伺服器就把線上入口降級成提示，而不是點了沒反應 */
     if (!Config.isOnlineEnabled()) {
       $('b-online').addEventListener('click', function () {
-        toast(Config.error || '這份頁面沒有連到遊戲伺服器，只能玩單機。用 npm start 啟動伺服器後再開一次。', 4200);
+        toast((Config.error ? w.I18N.message(Config.error) : null) || (globalThis.I18N ? globalThis.I18N.t("text.002") : "這份頁面沒有連到遊戲伺服器，只能玩單機。用 npm start 啟動伺服器後再開一次。"), 4200);
       }, true);
     }
 
@@ -1332,7 +1358,7 @@
         /* 邀請連結一定先讓人確認／修改名字，不能用裝置上的舊名稱直接進房。
            先把線連起來，這樣填名字的時候就看得到伺服器狀態。 */
         connect().catch(function () {});
-        toast('先確認一下你的名字，再按「加入房間」就進去了。', 4600);
+        toast((globalThis.I18N ? globalThis.I18N.t("text.001") : "先確認一下你的名字，再按「加入房間」就進去了。"), 4600);
         try { $('lobby-nick').focus(); } catch (e) {}
       } else {
         enterByIntent();

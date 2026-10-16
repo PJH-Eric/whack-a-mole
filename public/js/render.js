@@ -69,14 +69,14 @@
     holes = [];
     board.innerHTML = '';
     board.setAttribute('role', 'grid');
-    board.setAttribute('aria-label', '地鼠盤面，共 ' + count +' 個地洞');
+    board.setAttribute('aria-label', w.I18N.t('board.aria', { n: count }));
 
     for (var i = 0; i < count; i++) {
       var cell = document.createElement('button');
       cell.type = 'button';
       cell.className = 'hole';
       cell.dataset.hole = String(i);
-      cell.setAttribute('aria-label', '第 ' + (i + 1) + ' 號地洞，空的');
+      cell.setAttribute('aria-label', w.I18N.t('hole.empty', { n: i + 1 }));
       cell.innerHTML =
         '<svg class="hole-back" viewBox="0 0 100 100" aria-hidden="true">' + SvgUI.holeBack() + '</svg>' +
         '<div class="mole-clip"><div class="mole-slot">' +
@@ -163,7 +163,8 @@
           delete rec.slot.dataset.mole;
           rec.badge.textContent = '';
           rec.badge.className = 'mole-badge';
-          rec.el.setAttribute('aria-label', '第 ' + (i + 1) + ' 號地洞，空的');
+          rec.currentMole = null;
+          rec.el.setAttribute('aria-label', w.I18N.t('hole.empty', { n: i + 1 }));
         }
         continue;
       }
@@ -179,9 +180,8 @@
         rec.badge.className = 'mole-badge side-' + t.side;
         rec.badge.textContent = (t.points > 0 ? '+' : '') + t.points
           + (t.hp > 1 ? ' ×' + m.hpLeft : '');
-        rec.el.setAttribute('aria-label',
-          '第 ' + (i + 1) + ' 號地洞，' + t.label + '，' + (t.side === 'bad' ? '打了加 ' : '打了扣 ')
-          + Math.abs(t.points) + ' 分' + (m.hpLeft > 1 ? '，還要 ' + m.hpLeft + ' 下' : ''));
+        rec.currentMole = m;
+        rec.el.setAttribute('aria-label', holeLabel(i, m));
       }
       rec.moleId = m.id;
 
@@ -277,6 +277,8 @@
     for (var i = 0; i < holes.length; i++) {
       holes[i].moleId = 0;
       holes[i].drawnKey = '';
+      holes[i].currentMole = null;
+      holes[i].el.setAttribute('aria-label', holeLabel(i, null));
       holes[i].slot.style.transform = 'translateY(105%)';
       holes[i].slot.style.opacity = '0';
       holes[i].slot.classList.remove('up', 'leaving');
@@ -285,6 +287,24 @@
     }
     if (fx) fx.innerHTML = '';
   }
+
+  function holeLabel(index, mole) {
+    if (!mole) return w.I18N.t('hole.empty', { n: index + 1 });
+    var type = Rules.typeOf(mole.type);
+    return w.I18N.t('hole.mole', {
+      n: index + 1,
+      label: type.label,
+      act: w.I18N.t(type.side === 'bad' ? 'hole.actAdd' : 'hole.actSub'),
+      p: Math.abs(type.points)
+    }) + (mole.hpLeft > 1 ? w.I18N.t('hole.hpLeft', { h: mole.hpLeft }) : '');
+  }
+
+  w.I18N.onChange(function () {
+    if (board) board.setAttribute('aria-label', w.I18N.t('board.aria', { n: holes.length }));
+    holes.forEach(function (record, index) {
+      record.el.setAttribute('aria-label', holeLabel(index, record.currentMole));
+    });
+  });
 
   w.Board = {
     mount: mount,

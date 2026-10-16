@@ -305,7 +305,7 @@
         '<path d="M34 52 h-16 M34 57 h-15 M66 52 h16 M66 57 h15" stroke="' + INK + '" stroke-width="2.2" stroke-linecap="round" opacity=".65"/>' +
         '<g transform="rotate(-8 62 82)">' +
         '<rect x="40" y="70" width="48" height="24" rx="5" fill="#FFF0DE" stroke="' + INK + '" stroke-width="3.5"/>' +
-        '<text x="64" y="86" font-size="13" font-weight="900" text-anchor="middle" fill="#D2444F">勿敲</text>' +
+        (globalThis.I18N ? globalThis.I18N.t("text.130") : "<text x=\"64\" y=\"86\" font-size=\"13\" font-weight=\"900\" text-anchor=\"middle\" fill=\"#D2444F\">勿敲</text>") +
         '</g>';
     }
   };
