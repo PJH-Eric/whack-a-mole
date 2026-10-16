@@ -899,7 +899,7 @@
        不然剛按完「離開」就會被拉回對戰畫面。 */
     if (S.mode !== 'online') return;
     if (view.match && view.phase !== 'over') GameAnalytics.sync(view.phase, view.code + '|' + view.match.seed, {
-      mode: 'online', difficulty: view.pace, players: view.match.players.length,
+      mode: 'online', difficulty: view.pace, players: view.match.standings.length,
       spectator: !view.you || view.you.role !== 'player'
     });
     var wasPhase = S.view ? S.view.phase : null;

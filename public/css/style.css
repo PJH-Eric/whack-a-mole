@@ -509,6 +509,7 @@ body{
     box-shadow:6px 0 22px rgba(74,59,85,.22);
   }
   .side.open{transform:translateX(0)}
+  .side.open .side-head{padding-top:calc(64px + var(--safe-t))}
   .side-close{display:inline-flex}
   .side-fab{display:flex}
   .stage{padding-left:calc(8px + var(--safe-l))}

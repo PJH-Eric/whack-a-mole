@@ -578,8 +578,12 @@ async function main() {
       await sleep(140);
       await page.click('#b-solo-start');
       await sleep(3600);                              // 單機倒數 3 秒，等它真的開打
-      const byType = await page.evaluate(MEASURE(25000));
-      const common = byType.mole || [];               // 小土鼠：第 1 階段最常見
+      const common = [];
+      for (const sampleMs of [25000, 10000, 10000]) {
+        const byType = await page.evaluate(MEASURE(sampleMs));
+        common.push(...(byType.mole || []));          // 小土鼠：第 1 階段最常見
+        if (common.length >= 3) break;
+      }
       ok(common.length >= 3, lv + ' 量到夠多小土鼠', common.length + ' 隻');
       dwell[lv] = common.length ? median(common) : 0;
       await leaveMatch(page);
