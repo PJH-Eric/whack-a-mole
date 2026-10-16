@@ -9,6 +9,8 @@
  */
 'use strict';
 
+require('./seo.js');
+
 const path = require('path');
 const Module = require('module');
 
