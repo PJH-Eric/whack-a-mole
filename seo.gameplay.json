@@ -1,0 +1,32 @@
+{
+  "zh-Hant": {
+    "name": "打地鼠大亂鬥",
+    "summary": "看清楚再出手，敲壞地鼠、放過好朋友，累積你的最高連擊。",
+    "modes": [
+      "單機練習",
+      "多人搶分",
+      "觀戰"
+    ],
+    "controls": "直接點擊冒出的地鼠"
+  },
+  "zh-Hans": {
+    "name": "打地鼠大乱斗",
+    "summary": "看清楚再出手，敲坏地鼠、放过好朋友，累积你的最高连击。",
+    "modes": [
+      "单机练习",
+      "多人抢分",
+      "观战"
+    ],
+    "controls": "直接点击冒出的地鼠"
+  },
+  "en": {
+    "name": "Whack-a-Mole Mayhem",
+    "summary": "Look first, then strike! Whack the moles, spare your friends, and build your best combo.",
+    "modes": [
+      "Solo Practice",
+      "Multiplayer Score Race",
+      "Spectate"
+    ],
+    "controls": "Tap the moles as they pop up"
+  }
+}
