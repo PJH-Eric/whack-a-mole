@@ -8,6 +8,6 @@
   "genre": "反應",
   "players": "1-5",
   "iconUrl": "https://pjh-eric.github.io/whack-a-mole/favicon-96.png",
-  "ogImage": "https://pjh-eric.github.io/whack-a-mole/og-image.png",
-  "ogImageAlt": "打地鼠大亂鬥遊戲圖示"
+  "ogImage": "https://pjh-eric.github.io/whack-a-mole/assets/images/cover.webp",
+  "ogImageAlt": "打地鼠大亂鬥 遊戲封面"
 }
