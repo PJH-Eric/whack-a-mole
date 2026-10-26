@@ -13,6 +13,7 @@
   var Config = w.GameConfig;
   var socket = null;
   var loading = null;
+  var connectionGeneration = 0;
   var listeners = {};
   var status = 'idle';    // idle | loading | connecting | connected | error | offline
   var lastError = null;   // { key, params }（字典 key），畫面端用 I18N.t 翻譯
@@ -44,6 +45,7 @@
 
   function setStatus(next, msg) {
     status = next;
+    if (w.ServerOutage) w.ServerOutage.state(next);
     lastError = msg || null;
     emitLocal('status', { status: status, key: lastError ? lastError.key : null, params: lastError ? lastError.params : null });
   }
@@ -61,6 +63,8 @@
       s.async = true;
       s.onload = function () { resolve(); };
       s.onerror = function () {
+        loading = null;
+        s.remove();
         reject(keyedError('net.cannotReach', { where: Config.describe() }));
       };
       document.head.appendChild(s);
@@ -80,7 +84,10 @@
     }
     if (socket && socket.connected) return Promise.resolve(socket);
 
+    var generation = connectionGeneration;
+    if (w.ServerOutage) w.ServerOutage.state('begin');
     return loadScript().then(function () {
+      if (generation !== connectionGeneration) throw new Error('Connection cancelled');
       if (socket) { socket.connect(); return waitHello(identity); }
       setStatus('connecting');
       socket = w.io(Config.serverUrl, {
@@ -167,6 +174,7 @@
   }
 
   function disconnect() {
+    connectionGeneration++;
     if (socket) { socket.disconnect(); }
     setStatus('idle');
   }
