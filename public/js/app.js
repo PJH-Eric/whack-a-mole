@@ -74,6 +74,7 @@
   function colorHex(key) { return Rules.PLAYER_COLOR_HEX[key] || '#A48FDB'; }
 
   function show(id) {
+    if (w.ServerOutage) w.ServerOutage.setScreen(id);
     els('.screen').forEach(function (s) { s.classList.toggle('active', s.id === id); });
     S.screen = id;
     if (id !== 's-game' && w.NetworkLatency) w.NetworkLatency.setActive(false);
