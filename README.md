@@ -11,6 +11,8 @@
 雙擊 **`啟動遊戲.bat`**（第一次會自動 `npm install`），瀏覽器會自己打開
 <http://localhost:3030>。
 
+需要 Node.js 26.12.1 或更新的 26.x 修補版本。
+
 視窗裡會印出「同網段」網址，例如 `http://192.168.1.23:3030` ——
 同一個 Wi-Fi 下的手機、平板、其他電腦輸入這個網址就會進到同一個大廳，可以直接開房對戰。
 
@@ -178,7 +180,7 @@ GitHub Pages 只能放靜態檔案，**跑不動 `server.js`**。所以架構是
 
 1. 把這個 repo push 到 GitHub。
 2. Render → **New → Blueprint** → 指到這個 repo。`render.yaml` 已經寫好了
-   （Node 20、`npm ci --omit=dev`、`node server.js`、健康檢查 `/health`）。
+   （Node 26.12.1、`npm ci --omit=dev`、`node server.js`、健康檢查 `/health`）。
 3. 部署完成後把網址記下來，例如 `https://whack-a-mole.onrender.com`。
 4. 在 Render 的 **Environment** 把 `GAME_ALLOWED_ORIGIN` 設成你的 Pages 來源，
    這個 repo 是 `https://pjh-eric.github.io`（只要來源，不含路徑）。

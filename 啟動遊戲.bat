@@ -5,7 +5,17 @@ cd /d "%~dp0"
 where node >nul 2>nul
 if errorlevel 1 (
   echo [錯誤] 找不到 Node.js
-  echo 請先到 https://nodejs.org/ 安裝 Node.js LTS 之後再執行一次。
+  echo 請先到 https://nodejs.org/ 安裝 Node.js 26.12.1 之後再執行一次。
+  echo.
+  pause
+  exit /b 1
+)
+
+node -e "const [major, minor, patch] = process.versions.node.split('.').map(Number); if (major !== 26 || minor < 12 || (minor === 12 && patch < 1)) process.exit(1)"
+if errorlevel 1 (
+  echo [錯誤] 需要 Node.js 26.12.1 或更新的 26.x 修補版本。
+  for /f %%V in ('node --version') do echo 目前版本：%%V
+  echo 請使用 nvm-windows 切換或安裝最新版：https://nodejs.org/
   echo.
   pause
   exit /b 1
