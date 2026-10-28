@@ -143,7 +143,7 @@ function syncRoom(room) {
 
 function syncLobby() {
   if (!lobbySockets.size) return;
-  const payload = { rooms: store.list(), total: store.size() };
+  const payload = { rooms: store.list(), total: store.size(), online: io.engine.clientsCount };
   for (const s of lobbySockets) s.emit('lobby:rooms', payload);
 }
 
@@ -172,6 +172,7 @@ io.on('connection', (socket) => {
   socket.data.clientId = null;
   socket.data.name = 'Player';
   socket.data.roomCode = null;
+  syncLobby();
 
   socket.on('latency:ping', (_sentAt, ack) => { if (typeof ack === 'function') ack(); });
 
@@ -189,7 +190,7 @@ io.on('connection', (socket) => {
   socket.on('lobby:subscribe', () => {
     detach(socket);
     lobbySockets.add(socket);
-    socket.emit('lobby:rooms', { rooms: store.list(), total: store.size() });
+    socket.emit('lobby:rooms', { rooms: store.list(), total: store.size(), online: io.engine.clientsCount });
   });
 
   socket.on('lobby:unsubscribe', () => { lobbySockets.delete(socket); });
@@ -409,7 +410,7 @@ io.on('connection', (socket) => {
     lobbySockets.delete(socket);
     const room = store.get(socket.data.roomCode);
     detach(socket);
-    if (!room) return;
+    if (!room) { syncLobby(); return; }
     const member = room.member(socket.data.clientId);
     if (!member) return;
     /* 先標記為斷線並保留座位，讓重新整理的人可以憑 clientId 回到原位 */

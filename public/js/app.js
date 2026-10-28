@@ -31,6 +31,7 @@
     solo: { state: null, rng: null, brains: {}, ids: [] },
     /* 線上 */
     view: null,               // 最近一次 room:sync
+    onlineCount: null,
     match: null,              // 目前盤面快照（線上會用事件在本機補幀）
     lastStage: 0,
     lastCombo: 0,
@@ -784,6 +785,7 @@
 
   function connStatus(st) {
     S.connection = st;
+    if (!st || st.status !== 'connected') { S.onlineCount = null; paintOnlineCount(); }
     var dot = $('conn-dot'), txt = $('conn-text');
     var map = {
       idle: ['', (globalThis.I18N ? globalThis.I18N.t("text.059") : "尚未連線")], loading: ['warn', (globalThis.I18N ? globalThis.I18N.t("text.058") : "正在載入連線程式…")],
@@ -811,6 +813,8 @@
 
   function paintRoomList(payload) {
     S.roomList = payload;
+    S.onlineCount = Number.isInteger(payload.online) && payload.online >= 0 ? payload.online : null;
+    paintOnlineCount();
     $('rooms-count').textContent = payload.total || 0;
     var list = payload.rooms || [];
     if (!list.length) {
@@ -830,6 +834,16 @@
         + '</div>';
     }).join('');
     SvgUI.decorateAll($('room-list'));
+  }
+
+  function paintOnlineCount() {
+    var count = S.onlineCount;
+    var chip = $('lobby-online-count');
+    if (!chip) return;
+    chip.hidden = !Number.isInteger(count) || !S.connection || S.connection.status !== 'connected';
+    chip.textContent = Number.isInteger(count)
+      ? (globalThis.I18N ? globalThis.I18N.t('lobby.onlineCount', { n: count }) : '目前在線：' + count + ' 人')
+      : '';
   }
 
   function joinRoom(code, token, role) {
