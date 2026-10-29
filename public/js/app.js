@@ -1203,13 +1203,13 @@
     paintPlayingFlag();
   }
 
-  /* body.playing 只在真的在打的時候成立。準備／倒數／結算都不算 ——
+  /* body.playing 在倒數與對局中成立（倒數時游標就先是槌子）。準備／結算不算 ——
      鐵鎚游標靠這個旗標，設定和等待畫面用一般游標就好。 */
   function paintPlayingFlag() {
     var phase = S.mode === 'online'
       ? (S.view && S.view.phase)
       : (S.match && S.match.phase);
-    document.body.classList.toggle('playing', phase === 'playing');
+    document.body.classList.toggle('playing', phase === 'playing' || phase === 'countdown');
   }
 
   /* ============================================================
