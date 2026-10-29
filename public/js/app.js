@@ -44,7 +44,9 @@
     joinIntent: null
   };
 
-  function srvNow() { return Date.now() + S.clockOffset; }
+  /* 暫停時時鐘凍結在按下去的那一刻；繼續時把暫停的長度從時鐘扣掉，
+     地鼠、倒數、電腦對手全部都吃同一個時鐘，所以整個遊戲會原地接續。 */
+  function srvNow() { return S.paused ? S.pauseNow : Date.now() + S.clockOffset; }
 
   /* ------------------------------------------------------------ 小工具 */
 
@@ -208,7 +210,7 @@
   function nameOfId(id) {
     if (!S.match) return '';
     for (var i = 0; i < S.match.standings.length; i++) {
-      if (S.match.standings[i].id === id) return S.match.standings[i].name;
+      if (S.match.standings[i].id === id) return playerName(S.match.standings[i]);
     }
     return '';
   }
@@ -358,7 +360,7 @@
     S.solo.rng = RNG.createRng('spawn:solo:' + seed);
     S.match = Rules.snapshot(S.solo.state, now);
     GameAnalytics.start({ mode: 'solo', difficulty: level, players: roster.length });
-    S.lastStage = 0; S.lastCombo = 0; S.warned = false;
+    S.lastStage = 0; S.lastCombo = 0; S.warned = false; S.beatSec = 0; S.prevCombo = 0; S.paused = false;
 
     enterGameScreen();
   }
@@ -410,6 +412,11 @@
     if (S.match) Board.setGrid(S.match);
     $('ov-result').hidden = true;
     $('ov-wait').hidden = true;
+    S.paused = false;
+    $('ov-pause').hidden = true;
+    /* 單機用「暫停」鈕（選單裡有繼續／重新開始／回首頁），線上維持原本的「離開」 */
+    $('b-pause').hidden = S.mode !== 'solo';
+    $('b-quit').hidden = S.mode === 'solo';
     Board.clear();
     applyDisplayPrefs();
     $('tab-chat').hidden = S.mode !== 'online';
@@ -422,6 +429,8 @@
   }
 
   function leaveGame() {
+    S.paused = false;
+    $('ov-pause').hidden = true;
     document.body.classList.remove('playing');
     stopLoop();
     if (S.mode === 'online' && S.view) Online.send('room:leave', {});
@@ -435,7 +444,7 @@
     var tick = function () {
       S.raf = w.requestAnimationFrame(tick);
       var now = srvNow();
-      if (S.mode === 'solo') soloStep(Date.now());
+      if (S.mode === 'solo' && !S.paused) soloStep(srvNow());
       else pruneExpired(S.match, now);
       /* 結算之後盤面是靜止的（地鼠都收掉了），只再畫一次把最後一隻清乾淨，
          之後就不必每一幀重畫 —— 大家常常停在結算畫面聊天，手機省一點電。
@@ -488,8 +497,15 @@
     var sec = Math.ceil(m.remainMs / 1000);
     var clock = $('hud-clock');
     if (clock.textContent !== String(sec)) clock.textContent = sec;
-    $('hud-time').classList.toggle('low', m.phase === 'playing' && sec <= 10);
-    if (m.phase === 'playing' && sec <= 10 && !S.warned) { S.warned = true; Sound.play('warn'); }
+    /* 最後 10 秒：時間條轉紅、盤面邊緣泛紅光、每秒一次心跳（最後 3 秒變成兩下） */
+    var urgent = m.phase === 'playing' && sec <= 10;
+    $('hud-time').classList.toggle('low', urgent);
+    $('board-wrap').classList.toggle('urgent', urgent);
+    if (urgent && S.beatSec !== sec) {
+      S.beatSec = sec;
+      Sound.play('heart');
+      if (sec <= 3) Sound.play('heart', 0.5);
+    } else if (!urgent) S.beatSec = 0;
 
     var st = $('hud-stage');
     /* 「第 N 階段・」包成 span：窄螢幕用 CSS 收起來，HUD 才排得下一行 */
@@ -497,19 +513,33 @@
       : (globalThis.I18N ? globalThis.I18N.t("text.116") : "<span class=\"stage-no\">第 ") + m.stage.no + (globalThis.I18N ? globalThis.I18N.t("text.115") : " 階段・</span>") + esc(w.I18N.t('stage.' + m.stage.no));
     st.className = 'hud-stage' + (!over && m.stage.no > 1 ? ' s' + m.stage.no : '');
     if (m.phase === 'playing' && m.stage.no !== S.lastStage) {
-      if (S.lastStage) { Sound.play('stage'); Board.shout(w.I18N.t('stage.' + m.stage.no) + (globalThis.I18N ? globalThis.I18N.t("text.114") : "！地鼠變快了"), 'stage', 1100); }
+      if (S.lastStage) { Sound.play('stage' + m.stage.no); Board.banner(w.I18N.t('banner.stage' + m.stage.no), 's' + m.stage.no, 1800); }
       S.lastStage = m.stage.no;
     }
 
     var fill = $('timebar-fill');
     fill.style.width = (m.remainMs / (m.endAt - m.startAt) * 100).toFixed(1) + '%';
-    fill.className = m.stage.no > 1 ? 's' + m.stage.no : '';
+    fill.className = (m.stage.no > 1 ? 's' + m.stage.no : '') + (urgent ? ' low' : '');
 
     var me = myRow();
     $('hud-score').textContent = me ? me.score : 0;
     var cb = $('hud-combo');
     if (!over && me && me.combo >= 2) { cb.hidden = false; $('hud-combo-n').textContent = me.combo; }
     else cb.hidden = true;
+
+    /* 連擊條：每 COMBO_STEP 連擊升一階（+10%），滿 5 階 +50%；打到好人就歸零閃一下 */
+    var cmb = !over && me ? me.combo : 0;
+    var step = Rules.COMBO_STEP;
+    var tier = Math.min(5, Math.floor(cmb / step));
+    var frac = cmb > 0 && cmb % step === 0 ? 1 : (cmb % step) / step;
+    $('combobar-fill').style.width = (frac * 100).toFixed(0) + '%';
+    var cbar = $('combobar');
+    cbar.className = 'combobar t' + tier;
+    if (S.prevCombo >= 3 && cmb === 0 && !over) {
+      cbar.classList.add('broke');
+      setTimeout(function () { cbar.classList.remove('broke'); }, 420);
+    }
+    S.prevCombo = cmb;
 
     /* 倒數 */
     var cd = $('countdown');
@@ -609,7 +639,7 @@
       : (globalThis.I18N ? globalThis.I18N.t("text.101") : "觀戰中，看得到完整盤面");
 
     /* 彩虹加倍剩餘時間顯示在 HUD 上 */
-    var refNow = S.mode === 'solo' ? Date.now() : srvNow();
+    var refNow = srvNow();
     var buffLeft = m.phase === 'playing' && r && r.buffUntil ? Math.max(0, r.buffUntil - refNow) : 0;
     $('hud-buff').hidden = buffLeft <= 0;
     if (buffLeft > 0) $('hud-buff').textContent = (globalThis.I18N ? globalThis.I18N.t("text.100") : "🌈 加倍中 ") + Math.ceil(buffLeft / 1000) + 's';
@@ -737,6 +767,16 @@
     SvgUI.decorateAll($('ov-wait-btns'));
   }
 
+  /* 一局只記一次本機紀錄（線上結算畫面每次同步都會重畫，用種子去重） */
+  function recordLocal(m, row) {
+    var key = String(m.seed) + ':' + S.mode;
+    if (S.recKey === key) return S.recOut;
+    S.recKey = key;
+    var won = m.standings.length > 1 && row.rank === 1 && !m.draw;
+    S.recOut = Store.recordMatch(m.pace || 'normal', row, won);
+    return S.recOut;
+  }
+
   function showResult() {
     var m = S.match;
     if (!m) return;
@@ -747,16 +787,76 @@
     GameAnalytics.end({ result: m.draw ? 'draw' : (iWon ? 'win' : 'lose') });
     $('ov-result-title').textContent = m.draw
       ? (globalThis.I18N ? globalThis.I18N.t("text.075") : "平手！") + champs.map(function (p) { return playerName(p); }).join('、') + (globalThis.I18N ? globalThis.I18N.t("text.074") : " 同分")
-      : (iWon ? (globalThis.I18N ? globalThis.I18N.t("text.073") : "你贏了！") : (champs[0] ? champs[0].name + (globalThis.I18N ? globalThis.I18N.t("text.072") : " 獲勝") : (globalThis.I18N ? globalThis.I18N.t("text.071") : "時間到")));
+      : (iWon ? (globalThis.I18N ? globalThis.I18N.t("text.073") : "你贏了！") : (champs[0] ? playerName(champs[0]) + (globalThis.I18N ? globalThis.I18N.t("text.072") : " 獲勝") : (globalThis.I18N ? globalThis.I18N.t("text.071") : "時間到")));
 
-    $('result-table').innerHTML = m.standings.map(function (p) {
-      return '<div class="resrow' + (p.rank === 1 ? ' win' : '') + '" style="--who:' + colorHex(p.color) + '">'
+    /* 頒獎台：前三名站上去（第 2 名在左、第 1 名在中、第 3 名在右）；第 4 名以後用一般列表 */
+    var top = m.standings.slice(0, 3);
+    var order = top.length >= 3 ? [1, 0, 2] : (top.length === 2 ? [1, 0] : [0]);
+    var fresh = S.podKey !== m.seed;
+    S.podKey = m.seed;
+    var confetti = '';
+    if (fresh && iWon) {
+      var cc = ['#FF8FA3', '#FFD65C', '#7ED9A8', '#8FC5F5', '#B79BE8', '#FFB84D'];
+      for (var k = 0; k < 18; k++) {
+        confetti += '<i style="left:' + (4 + k * 5.4).toFixed(1) + '%;--d:' + ((k * 0.13) % 1.6).toFixed(2) + 's;--c:' + cc[k % cc.length]
+          + ';--r:' + (k * 47 % 360) + 'deg"></i>';
+      }
+      confetti = '<div class="confetti" aria-hidden="true">' + confetti + '</div>';
+    }
+    var html = '<div class="podium' + (fresh ? ' fresh' : '') + ' n' + top.length + '" role="group" aria-label="' + esc(w.I18N.t('result.podium')) + '">'
+      + confetti + '<div class="pod-floor" aria-hidden="true"></div>'
+      + order.map(function (i) {
+        var p = top[i], nm = esc(playerName(p));
+        return '<div class="pod p' + (i + 1) + ' g' + Math.min(3, p.rank) + (p.id === me ? ' me' : '') + '" style="--who:' + colorHex(p.color) + '"'
+          + ' aria-label="' + esc(w.I18N.t('result.rank', { n: p.rank })) + ' ' + nm + ' ' + p.score + '">'
+          + '<div class="pod-av">' + SvgUI.avatar(colorHex(p.color), p.rank === 1) + '</div>'
+          + (p.id === me ? '<span class="pod-you">' + esc(w.I18N.t('result.you')) + '</span>' : '')
+          + '<div class="pod-who"><span class="pod-name">' + nm + '</span><b class="pod-score">' + p.score + '</b></div>'
+          + '<div class="pod-block"><i class="pod-no">' + p.rank + '</i></div></div>';
+      }).join('') + '</div>';
+    html += m.standings.slice(3).map(function (p) {
+      return '<div class="resrow' + (p.id === me ? ' me' : '') + '" style="--who:' + colorHex(p.color) + '">'
         + '<span class="no">' + p.rank + '</span>'
-        + '<span class="nm">' + esc(playerName(p))
-        + (globalThis.I18N ? globalThis.I18N.t("text.070") : "<small>敲中 ") + p.hits + (globalThis.I18N ? globalThis.I18N.t("text.069") : "・誤敲 ") + p.goodHits + (globalThis.I18N ? globalThis.I18N.t("text.068") : "・最佳連擊 ") + p.bestCombo
-        + (globalThis.I18N ? globalThis.I18N.t("text.067") : "・命中率 ") + Math.round((p.accuracy || 0) * 100) + '%</small></span>'
+        + '<span class="nm">' + esc(playerName(p)) + '</span>'
         + '<span class="sc">' + p.score + '</span></div>';
     }).join('');
+    $('result-table').innerHTML = html;
+
+    /* 本局統計：只給玩家自己看（觀戰者沒有自己的成績） */
+    var row = m.standings.filter(function (p) { return p.id === me; })[0];
+    var box = $('result-stats');
+    var nbox = $('result-new');
+    nbox.hidden = true; nbox.innerHTML = '';
+    if (!row) { box.hidden = true; box.innerHTML = ''; }
+    else {
+      var rec = recordLocal(m, row);
+      var bt = row.byType || {};
+      var kinds = Rules.MOLE_ORDER.filter(function (k) { return (bt[k] || 0) > 0; });
+      var T = function (k, p) { return esc(w.I18N.t(k, p)); };
+      var out = '<h4>' + T('result.statsTitle') + '</h4><div class="rgrid">'
+        + '<div class="rcell"><b>' + Math.round((row.accuracy || 0) * 100) + '%</b><span>' + T('result.accuracy') + '</span></div>'
+        + '<div class="rcell"><b>' + row.bestCombo + '</b><span>' + T('result.bestCombo') + '</span></div>'
+        + '<div class="rcell' + (row.goodHits ? ' warn' : '') + '"><b>' + T('result.times', { n: row.goodHits }) + '</b><span>' + T('result.wrong') + '</span></div>'
+        + '</div><div class="rkinds"><span class="rlbl">' + T('result.kinds', { n: kinds.length }) + '</span><div class="kindrow">'
+        + (kinds.length ? kinds.map(function (k) {
+          var t = Rules.typeOf(k), n = bt[k];
+          return '<span class="kind ' + t.side + '" role="img" aria-label="' + esc(t.label) + ' ' + esc(w.I18N.t('result.times', { n: n })) + '">'
+            + SvgUI.moleSvg(k, t.hp, 'kind-svg') + '<b>×' + n + '</b></span>';
+        }).join('') : '<span class="rnone">' + T('result.kindsNone') + '</span>')
+        + '</div></div>';
+      if (rec && (rec.newBest.score || rec.newBest.combo || rec.unlocked.length)) {
+        var chips = '';
+        if (rec.newBest.score || rec.newBest.combo) chips += '<span class="newbest">' + T('result.newBest') + '</span>';
+        chips += rec.unlocked.map(function (id) {
+          return '<span class="newbadge" role="img" aria-label="' + T('result.newBadge') + '：' + T('badge.' + id + '.n') + '">'
+            + SvgUI.badge(id, false) + '<b>' + T('badge.' + id + '.n') + '</b></span>';
+        }).join('');
+        nbox.innerHTML = chips;
+        nbox.hidden = false;
+      }
+      box.innerHTML = out;
+      box.hidden = false;
+    }
 
     var btns = '';
     if (S.mode === 'solo') {
@@ -926,7 +1026,7 @@
       enterGameScreen();
     }
     if (view.phase === 'countdown' && wasPhase !== 'countdown') {
-      S.lastStage = 0; S.lastCombo = 0; S.warned = false;
+      S.lastStage = 0; S.lastCombo = 0; S.warned = false; S.beatSec = 0; S.prevCombo = 0;
       $('ov-result').hidden = true;
       Board.clear();
     }
@@ -1080,7 +1180,51 @@
    * 操作綁定
    * ============================================================ */
 
+  /* ------------------------------------------------------------ 暫停（單機） */
+
+  function canPause() {
+    return S.mode === 'solo' && !S.paused && !!S.match
+      && (S.match.phase === 'playing' || S.match.phase === 'countdown')
+      && $('s-game').classList.contains('active');
+  }
+
+  function pauseGame(auto) {
+    if (!canPause()) return;
+    S.paused = true;
+    S.pauseNow = Date.now() + S.clockOffset;
+    S.pauseWall = Date.now();
+    S.pauseFocus = document.activeElement;
+    $('ov-pause').hidden = false;
+    SvgUI.repaintAll($('ov-pause'));
+    Sound.play('pause');
+    if (!auto && $('b-resume') && $('b-resume').focus) $('b-resume').focus();
+  }
+
+  function resumeGame() {
+    if (!S.paused) return;
+    S.clockOffset -= Date.now() - S.pauseWall;
+    S.paused = false;
+    $('ov-pause').hidden = true;
+    Sound.play('resume');
+    if (S.pauseFocus && S.pauseFocus.focus) { try { S.pauseFocus.focus(); } catch (e) {} }
+    S.pauseFocus = null;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape' || e.repeat || e.defaultPrevented) return;
+    if (anyOpenModal()) return;
+    if (S.paused) { e.preventDefault(); resumeGame(); return; }
+    if (canPause()) { e.preventDefault(); pauseGame(); }
+  });
+
+  /* 切到別的分頁或把視窗縮到背景時自動暫停，回來才不會發現一局已經打完了 */
+  document.addEventListener('visibilitychange', function () { if (document.hidden) pauseGame(true); });
+
   function doAction(act) {
+    if (act === 'pause-open') { pauseGame(); return; }
+    if (act === 'pause-resume') { resumeGame(); return; }
+    if (act === 'pause-restart') { S.paused = false; $('ov-pause').hidden = true; startSolo(); return; }
+    if (act === 'pause-home') { leaveGame(); return; }
     if (act === 'quit') {
       /* 打到一半誤觸「離開」很痛，單機和線上都先問一句 */
       var live = S.mode === 'online'
@@ -1219,6 +1363,9 @@
         try {
           localStorage.removeItem(Store.KEY.stats);
           localStorage.removeItem(Store.KEY.best);
+          localStorage.removeItem(Store.KEY.records);
+          localStorage.removeItem(Store.KEY.totals);
+          localStorage.removeItem(Store.KEY.badges);
         } catch (err) {}
         paintStats();
         toast((globalThis.I18N ? globalThis.I18N.t("text.017") : "戰績已清除。"));
@@ -1282,6 +1429,23 @@
     $('stat-grid').innerHTML = cells.map(function (c) {
       return '<div class="statcard"><b>' + c[1] + '</b><span>' + c[0] + '</span></div>';
     }).join('');
+
+    var T = function (k) { return esc(w.I18N.t(k)); };
+    var recs = Store.records();
+    $('rec-list').innerHTML = Rules.PACE_ORDER.map(function (k) {
+      var r = recs[k];
+      var line = function (lbl, v) { return '<div class="recrow"><span>' + T(lbl) + '</span><b>' + v + '</b></div>'; };
+      return '<div class="reccard"><h4>' + esc(Rules.paceOf(k).label) + '</h4>'
+        + (r ? line('rec.score', r.score) + line('rec.combo', r.combo) + line('rec.total', r.hits)
+          : '<p class="recnone">' + T('rec.none') + '</p>') + '</div>';
+    }).join('');
+    var have = Store.badges();
+    $('badge-grid').innerHTML = Store.BADGES.map(function (b) {
+      var on = !!have[b.id];
+      return '<div class="badgecell ' + (on ? 'has' : 'locked') + '"' + (on ? '' : ' title="' + T('badge.locked') + '"') + '>'
+        + '<div class="bpic">' + SvgUI.badge(b.id, !on) + '</div>'
+        + '<div class="btxt"><b>' + T('badge.' + b.id + '.n') + '</b><span>' + T('badge.' + b.id + '.d') + '</span></div></div>';
+    }).join('');
   }
 
   /* ------------------------------------------------------------ 線上事件 */
@@ -1344,8 +1508,10 @@
     Board.mount($('board'), $('fx'), Rules.HOLES, function (hole, moleId) {
       if (S.mode === 'solo') {
         if (!S.solo.state) return;
-        var res = Rules.whack(S.solo.state, 'me', { hole: hole, moleId: moleId }, Date.now());
-        if (res.ok) { S.match = Rules.snapshot(S.solo.state, Date.now()); handleEvents([res.event], Date.now()); }
+        if (S.paused) return;
+        var tnow = srvNow();
+        var res = Rules.whack(S.solo.state, 'me', { hole: hole, moleId: moleId }, tnow);
+        if (res.ok) { S.match = Rules.snapshot(S.solo.state, tnow); handleEvents([res.event], tnow); }
         return;
       }
       if (S.mode === 'online') {

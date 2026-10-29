@@ -151,6 +151,24 @@
     stage: function (t) {
       [67, 74, 79].forEach(function (n, i) { tone({ t: t + i * 0.06, f: hz(n), dur: 0.26, type: 'square', v: 0.2 }); });
     },
+    /* 第 2 階段：往上推一個和弦，比「換階段」基準音更亮 */
+    stage2: function (t) {
+      [69, 76, 81, 88].forEach(function (n, i) { tone({ t: t + i * 0.055, f: hz(n), dur: 0.24, type: 'square', v: 0.2 }); });
+    },
+    /* 第 3 階段：再高、再急、帶鋸齒音，聽起來就是「要瘋了」 */
+    stage3: function (t) {
+      [74, 81, 86, 93, 98].forEach(function (n, i) { tone({ t: t + i * 0.04, f: hz(n), f2: hz(n + 2), dur: 0.2, type: 'sawtooth', v: 0.17 }); });
+      noise({ t: t, f: 3200, q: 0.8, dur: 0.16, v: 0.1, decay: 0.5 });
+    },
+    /* 最後 10 秒的心跳：兩聲悶悶的咚咚 */
+    heart: function (t) {
+      tone({ t: t, f: 96, f2: 52, dur: 0.14, type: 'sine', v: 0.55 });
+      tone({ t: t, f: 190, f2: 110, dur: 0.08, type: 'triangle', v: 0.16 });
+      tone({ t: t + 0.17, f: 84, f2: 48, dur: 0.14, type: 'sine', v: 0.4 });
+    },
+    /* 暫停／繼續 */
+    pause: function (t) { tone({ t: t, f: 520, f2: 330, dur: 0.12, type: 'triangle', v: 0.2 }); },
+    resume: function (t) { tone({ t: t, f: 330, f2: 560, dur: 0.12, type: 'triangle', v: 0.2 }); },
     win: function (t) {
       [72, 76, 79, 84, 88].forEach(function (n, i) { tone({ t: t + i * 0.1, f: hz(n), dur: 0.3, type: 'triangle', v: 0.3 }); });
     },

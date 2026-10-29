@@ -87,17 +87,20 @@ async function main() {
     await page.waitForSelector('#s-solo.active', { timeout: 3000 });
     await page.click('#b-solo-start');
     await page.waitForFunction(() => window.WAM.S.match && window.WAM.S.match.phase === 'playing', null, { timeout: 8000 });
-    await page.click('#b-quit');
-    const soloAsk = await page.$eval('#confirm-modal', (element) => !element.hidden).catch(() => false);
-    ok(soloAsk, '單機打到一半離開也會先確認');
-    if (soloAsk) {
-      await page.click('#b-confirm-cancel');
-      ok(await page.$eval('#s-game', (element) => element.classList.contains('active')), '按取消會留在對局裡');
-      await page.click('#b-quit');
-      await page.click('#b-confirm-ok');
+    /* 單機把「離開」換成暫停鈕：先開暫停選單（繼續／重新開始／回首頁），不會一個誤觸就沒了 */
+    await page.click('#b-pause');
+    const soloPause = await page.$eval('#ov-pause', (element) => !element.hidden).catch(() => false);
+    ok(soloPause, '單機打到一半按暫停會先開暫停選單');
+    if (soloPause) {
+      await page.click('#b-resume');
+      ok(await page.$eval('#s-game', (element) => element.classList.contains('active')), '按繼續會留在對局裡');
+      ok(await page.$eval('#ov-pause', (element) => element.hidden), '繼續後暫停選單關閉');
+      await page.keyboard.press('Escape');
+      ok(await page.$eval('#ov-pause', (element) => !element.hidden), '按 Esc 也能暫停');
+      await page.click('#ov-pause [data-act="pause-home"]');
     }
     await page.waitForFunction(() => document.querySelector('#s-home').classList.contains('active'), null, { timeout: 1000 });
-    ok(await page.$eval('#s-home', (element) => element.classList.contains('active')), '單機確認後回到主選單');
+    ok(await page.$eval('#s-home', (element) => element.classList.contains('active')), '暫停選單回首頁後回到主選單');
 
     ok(errors.length === 0, '離開流程沒有主控台錯誤', errors.slice(0, 3).join(' | '));
   } finally {

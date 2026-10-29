@@ -399,8 +399,11 @@ async function main() {
     await page.evaluate(() => { window.WAM.S.solo.state.endAt = Date.now() + 400; });
     await sleep(1800);
     ok(await page.$eval('#ov-result', (e) => !e.hidden), '時間到會出現結算浮層');
-    const rows = await page.$$eval('#result-table .resrow', (n) => n.length);
-    eqNum(rows, 3, '結算表列出 3 位');
+    /* 前三名站頒獎台，第 4 名以後才是一般列；單機 3 人局應該是 3 個頒獎台位置 */
+    const rows = await page.$$eval('#result-table .pod, #result-table .resrow', (n) => n.length);
+    eqNum(rows, 3, '結算頒獎台列出 3 位');
+    ok(await page.$eval('#result-stats', (e) => !e.hidden && !!e.querySelector('.rcell')), '結算顯示本局統計（命中率／最高連擊／誤打）');
+    ok(await page.$eval('#result-stats', (e) => e.scrollWidth <= e.clientWidth + 1), '本局統計沒有水平溢出');
     await page.screenshot({ path: path.join(SHOTS, 'solo-result.png') });
 
     await page.click('[data-act="again"]');

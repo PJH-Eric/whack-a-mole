@@ -185,17 +185,32 @@
       }
       rec.moleId = m.id;
 
-      /* 升起 → 停留 → 縮回 */
+      /* 升起（頂到頂後彈回一下再站穩）→ 停留 → 縮回（先蓄力再沉下去）。
+         高度絕不超過 100%：地洞視窗會切掉超出去的部分，過衝就會把頭切掉；
+         所以「彈性」靠頂到頂之後往下彈一點＋壓扁來表現，而不是往上衝過頭。 */
       var age = now - m.spawnAt;
       var left = m.expireAt - now;
-      var up = 1;
-      if (age < Rules.RISE_MS) up = ease(age / Rules.RISE_MS);
-      else if (left < Rules.SINK_MS) up = ease(Math.max(0, left) / Rules.SINK_MS);
-      if (reduceMotion) up = left > 0 ? 1 : 0;
+      var up = 1, sy = 1, sx = 1;
+      if (age < Rules.RISE_MS) {
+        var rp = age / Rules.RISE_MS;
+        if (rp < 0.6) up = ease(rp / 0.6);
+        else {
+          var dip = Math.sin(Math.PI * (rp - 0.6) / 0.4);
+          up = 1 - 0.07 * dip;
+          sy = 1 - 0.05 * dip; sx = 1 + 0.04 * dip;
+        }
+      } else if (left < Rules.SINK_MS) {
+        var sp = Math.max(0, left) / Rules.SINK_MS;
+        up = ease(sp);
+        var squat = Math.sin(Math.PI * (1 - sp));
+        sy = 1 - 0.1 * squat; sx = 1 + 0.05 * squat;
+      }
+      if (reduceMotion) { up = left > 0 ? 1 : 0; sy = 1; sx = 1; }
 
       /* 分數標記和地鼠共用同一個可見門檻，避免標記單獨飄在空洞上。 */
       var visible = up >= 0.06;
-      rec.slot.style.transform = 'translateY(' + ((1 - up) * 105).toFixed(1) + '%)';
+      rec.slot.style.transform = 'translateY(' + ((1 - up) * 105).toFixed(1) + '%)'
+        + (sy === 1 ? '' : ' scale(' + sx.toFixed(3) + ',' + sy.toFixed(3) + ')');
       rec.slot.style.opacity = visible ? '1' : '0';
       rec.badge.classList.toggle('on', visible);
 
@@ -223,6 +238,8 @@
       rec.el.classList.add('shake');
       setTimeout(function () { rec.el.classList.remove('shake'); }, 320);
     }
+
+    if (ev.k === 'hit') hitFx(rec, ev);
 
     var cls = 'flyscore';
     var text = '';
@@ -253,10 +270,60 @@
     for (var i = 0; i < stale.length; i++) stale[i].parentNode.removeChild(stale[i]);
     var r = rec.el.getBoundingClientRect();
     var f = fx.getBoundingClientRect();
-    n.style.left = (r.left - f.left + r.width / 2) + 'px';
-    n.style.top = (r.top - f.top + r.height * 0.3) + 'px';
     fx.appendChild(n);
+    /* 字是以洞口中心置中；靠邊的洞（尤其窄手機最左／最右欄）會被特效層邊緣切掉，所以夾在範圍內 */
+    var half = n.offsetWidth / 2 + 4;
+    var cx = r.left - f.left + r.width / 2;
+    cx = Math.max(half, Math.min(f.width - half, cx));
+    n.style.left = cx + 'px';
+    n.style.top = (r.top - f.top + r.height * 0.3) + 'px';
     setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); }, 950);
+  }
+
+  /**
+   * 被打到的反應：頭上轉三顆暈眩星星；敲倒時留下一隻「叉叉眼、被打扁」的殘影往洞裡縮回去，
+   * 沒敲倒（鐵盔鼠、大王鼠）就只晃一下。純視覺，不影響任何規則；減少動態時整個略過。
+   */
+  function hitFx(rec, ev) {
+    if (reduceMotion) return;
+    var cell = rec.el;
+    var stars = document.createElement('span');
+    stars.className = 'hit-stars';
+    stars.innerHTML = Rules.typeOf(ev.type).side === 'good' ? '' : w.SvgUI.stars();
+    if (stars.innerHTML) {
+      cell.appendChild(stars);
+      setTimeout(function () { if (stars.parentNode) stars.parentNode.removeChild(stars); }, 760);
+    }
+    if (ev.killed && rec.drawnKey) {
+      var clip = rec.slot.parentNode;
+      var ghost = document.createElement('div');
+      ghost.className = 'mole-slot ghost side-' + Rules.typeOf(ev.type).side;
+      ghost.style.transform = rec.slot.style.transform || 'translateY(0)';
+      ghost.style.opacity = '1';
+      ghost.innerHTML = '<div class="ghost-in"><svg class="mole-svg" viewBox="0 0 100 100" aria-hidden="true">'
+        + w.SvgUI.moleArt(ev.type, 1, true) + '</svg></div>';
+      clip.appendChild(ghost);
+      setTimeout(function () { if (ghost.parentNode) ghost.parentNode.removeChild(ghost); }, 620);
+    } else if (!ev.killed) {
+      rec.svg.classList.remove('stun');
+      void rec.svg.getBoundingClientRect();
+      rec.svg.classList.add('stun');
+      setTimeout(function () { rec.svg.classList.remove('stun'); }, 340);
+    }
+  }
+
+  /** 畫面上方的階段橫幅：滑下來停一下再收回去（同時只留一條） */
+  function banner(text, cls, ms) {
+    if (!fx) return;
+    var stale = fx.querySelectorAll('.stage-banner');
+    for (var i = 0; i < stale.length; i++) stale[i].parentNode.removeChild(stale[i]);
+    var n = document.createElement('div');
+    n.className = 'stage-banner ' + (cls || '');
+    n.setAttribute('role', 'status');
+    n.textContent = text;
+    n.style.animationDuration = (ms || 1700) + 'ms';
+    fx.appendChild(n);
+    setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); }, (ms || 1700) + 60);
   }
 
   /** 中央大字：倒數、階段提示、連擊里程碑 */
@@ -315,6 +382,7 @@
     clear: clear,
     popEvent: popEvent,
     shout: shout,
+    banner: banner,
     setOptions: setOptions,
     holeCount: function () { return holes.length; }
   };

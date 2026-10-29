@@ -80,8 +80,9 @@ async function main() {
           && actual.domHoles === actual.selected.holes,
         viewport.label + ' ' + key + ' 實際盤面符合選項', JSON.stringify(actual));
         /* 單機打到一半按離開會先問一句，確認後才回首頁 */
-        await page.click('#b-quit');
-        if (await page.$eval('#confirm-modal', (e) => !e.hidden)) await page.click('#b-confirm-ok');
+        /* 單機用暫停鈕：暫停選單的「回首頁」直接回主選單 */
+        await page.click('#b-pause');
+        await page.click('#ov-pause [data-act="pause-home"]');
         await page.click('#b-solo');
         await sleep(80);
       }

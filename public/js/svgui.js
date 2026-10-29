@@ -111,7 +111,18 @@
     return '<ellipse cx="50" cy="48" rx="42" ry="40" fill="none" stroke="#7ED9A8" stroke-width="5" opacity=".55" stroke-dasharray="7 6"/>';
   }
   /* 圓圓的眼睛 + 高光 */
+  var dizzyOn = false;
+  /* 被打扁的表情：兩顆叉叉眼 */
+  function crossEyes(x1, x2, y, r) {
+    var k = r * 0.95;
+    function x(cx) {
+      return '<path d="M' + (cx - k) + ' ' + (y - k) + ' L' + (cx + k) + ' ' + (y + k) + ' M' + (cx + k) + ' ' + (y - k) + ' L' + (cx - k) + ' ' + (y + k) +
+        '" stroke="' + INK + '" stroke-width="4" fill="none" stroke-linecap="round"/>';
+    }
+    return x(x1) + x(x2);
+  }
   function eyes(x1, x2, y, r, closed) {
+    if (dizzyOn) return crossEyes(x1, x2, y, r);
     if (closed) {
       return '<path d="M' + (x1 - r) + ' ' + y + ' q' + r + ' ' + (r * 1.1) + ' ' + (r * 2) + ' 0" stroke="' + INK + '" stroke-width="4" fill="none" stroke-linecap="round"/>' +
              '<path d="M' + (x2 - r) + ' ' + y + ' q' + r + ' ' + (r * 1.1) + ' ' + (r * 2) + ' 0" stroke="' + INK + '" stroke-width="4" fill="none" stroke-linecap="round"/>';
@@ -315,9 +326,63 @@
    * @param {string} key   地鼠種類
    * @param {number} hpLeft 剩餘血量（鐵盔鼠與大王鼠會依此換造型）
    */
-  function moleArt(key, hpLeft) {
+  function moleArt(key, hpLeft, dizzy) {
     var fn = MOLE_ART[key] || MOLE_ART.mole;
-    return fn(hpLeft);
+    dizzyOn = !!dizzy;
+    try { return fn(hpLeft); } finally { dizzyOn = false; }
+  }
+
+  /** 頒獎台上的玩家頭像：圓圓的小地鼠，身體顏色就是玩家色；第 1 名頭上戴皇冠 */
+  function avatar(hex, champ) {
+    var crown = champ
+      ? '<path d="M27 22l6-14 11 9 6-13 6 13 11-9 6 14z" fill="#FFD65C" stroke="' + INK + '" stroke-width="3.5" stroke-linejoin="round"/>' +
+        '<rect x="27" y="21" width="46" height="7" rx="2" fill="#E8B72E" stroke="' + INK + '" stroke-width="3.5"/>' +
+        '<circle cx="50" cy="12" r="2.6" fill="#FF8FA3"/>'
+      : '';
+    return '<svg viewBox="0 0 100 100" class="av-svg" aria-hidden="true">' +
+      '<circle cx="24" cy="46" r="13" fill="' + hex + '" stroke="' + INK + '" stroke-width="4"/><circle cx="24" cy="46" r="6" fill="#FFD0DC"/>' +
+      '<circle cx="76" cy="46" r="13" fill="' + hex + '" stroke="' + INK + '" stroke-width="4"/><circle cx="76" cy="46" r="6" fill="#FFD0DC"/>' +
+      '<circle cx="50" cy="62" r="32" fill="' + hex + '" stroke="' + INK + '" stroke-width="4.5"/>' +
+      '<ellipse cx="50" cy="73" rx="15" ry="11" fill="#FFE7D6" stroke="' + INK + '" stroke-width="3.5"/>' +
+      '<ellipse cx="50" cy="68" rx="5.5" ry="3.8" fill="' + INK + '"/>' +
+      '<path d="M44 76q6 6 12 0" stroke="' + INK + '" stroke-width="3.5" fill="none" stroke-linecap="round"/>' +
+      '<circle cx="37" cy="58" r="5" fill="' + INK + '"/><circle cx="63" cy="58" r="5" fill="' + INK + '"/>' +
+      '<circle cx="38.8" cy="56" r="1.8" fill="#fff"/><circle cx="64.8" cy="56" r="1.8" fill="#fff"/>' +
+      '<circle cx="27" cy="70" r="4.5" fill="#FF9FB6" opacity=".75"/><circle cx="73" cy="70" r="4.5" fill="#FF9FB6" opacity=".75"/>' +
+      crown + '</svg>';
+  }
+
+  /** 暈眩小星星（繞著頭轉的三顆星） */
+  function stars() {
+    function star(cx, cy, r) {
+      var p = [];
+      for (var i = 0; i < 10; i++) {
+        var a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+        p.push((cx + Math.cos(a) * rr).toFixed(1) + ',' + (cy + Math.sin(a) * rr).toFixed(1));
+      }
+      return '<polygon points="' + p.join(' ') + '" fill="#FFD65C" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>';
+    }
+    return '<svg viewBox="0 0 100 40" class="stars-svg" aria-hidden="true">' + star(20, 22, 11) + star(50, 12, 13) + star(80, 22, 11) + '</svg>';
+  }
+
+  /** 成就徽章：圓形獎牌 + 每枚各自的圖樣；locked 時畫成灰色 */
+  function badge(id, locked) {
+    var col = { clean: '#A9E7D2', combo30: '#FFB8CF', golden: '#FFD65C', sharp: '#AED9F5', rainbow: '#C9B6F5', hundred: '#FFC2B4', win: '#FFE3A0' }[id] || '#C9B6F5';
+    if (locked) col = '#E4DDEC';
+    var glyph = {
+      clean: '<path d="M32 52l12 12 24-26" fill="none" stroke="' + INK + '" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>',
+      combo30: '<path d="M50 24c6 12 18 16 18 32a18 18 0 0 1-36 0c0-8 4-12 8-16 0 6 4 8 6 8-2-10 2-18 4-24z" fill="#FFF" stroke="' + INK + '" stroke-width="5" stroke-linejoin="round"/>',
+      golden: '<path d="M50 24l7 15 16 2-12 11 4 16-15-9-15 9 4-16-12-11 16-2z" fill="#FFF" stroke="' + INK + '" stroke-width="5" stroke-linejoin="round"/>',
+      sharp: '<circle cx="50" cy="50" r="22" fill="none" stroke="' + INK + '" stroke-width="5"/><circle cx="50" cy="50" r="11" fill="none" stroke="' + INK + '" stroke-width="5"/><circle cx="50" cy="50" r="3.5" fill="' + INK + '"/>',
+      rainbow: '<path d="M24 62a26 26 0 0 1 52 0" fill="none" stroke="#FF8FA3" stroke-width="7" stroke-linecap="round"/><path d="M33 62a17 17 0 0 1 34 0" fill="none" stroke="#FFD65C" stroke-width="7" stroke-linecap="round"/><path d="M41 62a9 9 0 0 1 18 0" fill="none" stroke="#7ED9A8" stroke-width="7" stroke-linecap="round"/>',
+      hundred: '<rect x="36" y="26" width="28" height="17" rx="4" fill="#FFF" stroke="' + INK + '" stroke-width="5"/><path d="M50 43v28" stroke="' + INK + '" stroke-width="7" stroke-linecap="round"/>',
+      win: '<path d="M32 30h36v14a18 18 0 0 1-36 0z" fill="#FFF" stroke="' + INK + '" stroke-width="5" stroke-linejoin="round"/><path d="M50 62v10M40 74h20" stroke="' + INK + '" stroke-width="6" stroke-linecap="round"/>'
+    }[id] || '';
+    if (locked) glyph = '<path d="M38 38a12 12 0 1 1 18 10c-4 3-6 5-6 10" fill="none" stroke="#9A8CAA" stroke-width="7" stroke-linecap="round"/><circle cx="50" cy="70" r="4.5" fill="#9A8CAA"/>';
+    return '<svg viewBox="0 0 100 100" class="badge-svg' + (locked ? ' locked' : '') + '" aria-hidden="true">' +
+      '<path d="M32 74l-8 20 16-6 8 10 6-26zM68 74l8 20-16-6-8 10-6-26z" fill="' + (locked ? '#CFC5DA' : '#FF8FA3') + '" stroke="' + INK + '" stroke-width="4" stroke-linejoin="round"/>' +
+      '<circle cx="50" cy="48" r="38" fill="' + col + '" stroke="' + INK + '" stroke-width="5"/>' +
+      '<circle cx="50" cy="48" r="29" fill="none" stroke="#fff" stroke-width="3" opacity=".7"/>' + glyph + '</svg>';
   }
 
   /** 完整的 <svg>，圖鑑、結算畫面直接用 */
@@ -431,6 +496,9 @@
     setColor: setColor,
     moleArt: moleArt,
     moleSvg: moleSvg,
+    stars: stars,
+    avatar: avatar,
+    badge: badge,
     holeBack: holeBack,
     holeFront: holeFront,
     hammer: hammer,

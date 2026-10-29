@@ -287,7 +287,7 @@ body{
 .hud-combo b{font-size:1.05rem}
 .hud-buff{border:3px solid var(--ink);border-radius:999px;padding:5px 12px;font-weight:800;font-size:.85rem;
   background:linear-gradient(90deg,#FFB3B3,#FFE066,#7ED9A8,#B79BE8)}
-.timebar{height:9px;border:2.5px solid var(--ink);border-radius:999px;background:var(--paper);overflow:hidden;margin:2px 0 6px}
+.timebar{height:16px;border:2.5px solid var(--ink);border-radius:999px;background:var(--paper);overflow:hidden;margin:2px 0 4px;flex:0 0 auto}
 .timebar span{display:block;height:100%;width:100%;background:var(--mint-d);transition:width .25s linear}
 .timebar span.s2{background:var(--lemon-d)}
 .timebar span.s3{background:var(--peach-d)}
@@ -388,7 +388,7 @@ body{
 .lchip i{font-style:normal;font-variant-numeric:tabular-nums}
 
 /* 特效層 */
-.fx{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
+.fx{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:hidden}
 .flyscore{
   position:absolute;transform:translate(-50%,-50%);font-weight:900;font-size:clamp(1rem,2.8vmin,1.6rem);
   color:var(--ok);text-shadow:0 2px 0 #fff,0 0 6px #fff;animation:fly .9s ease-out forwards;white-space:nowrap;
@@ -533,7 +533,7 @@ body{
   .hud-time b,.hud-score b{font-size:1.15rem}
   .hud-time,.hud-score{padding:2px 9px;min-width:64px}
   .hud-stage,.hud-combo,.hud-buff{padding:3px 10px;font-size:.78rem}
-  .timebar{height:7px;margin:1px 0 4px}
+  .timebar{height:11px;margin:1px 0 3px}
   .settings-fab{--d:4px;min-width:42px;min-height:42px;padding:6px 8px calc(6px + var(--d))}
   .hud{padding-right:54px}
 }
@@ -541,6 +541,7 @@ body{
 /* 窄螢幕的 HUD 只有一排的空間：階段標籤縮成「熱身／加速／狂亂」，
    時間、階段、分數就不會被擠到第二排去，盤面也不會跟著上下跳。 */
 @media (max-width:560px){
+  .timebar{height:13px}
   .hud-stage .stage-no{display:none}
   .hud{gap:7px}
 }
@@ -599,4 +600,312 @@ input,textarea,select{user-select:text;-webkit-user-select:text}
 .settings-card, .panel { max-width: 100%; box-sizing: border-box; }
 html[lang="en"] .home-title, html[lang="en"] h1 { overflow-wrap: anywhere; }
 
-@media(max-width:600px) { .hud { padding-right: 116px; flex-wrap: wrap; height: auto; } }
+@media(max-width:600px) { .hud { padding-right: 116px; flex-wrap: nowrap; height: auto; } }
+
+
+/* =====================================================================
+ * 2026-10 加強：地鼠動畫、階段橫幅、倒數條與連擊條、頒獎台結算、暫停選單、戰績與成就
+ * ===================================================================== */
+
+/* ---- 時間條：最後 10 秒轉紅 ---- */
+.timebar span.low{background:linear-gradient(90deg,#FF8A8A,var(--danger));animation:barpulse .5s ease-in-out infinite alternate}
+@keyframes barpulse{from{filter:brightness(1)}to{filter:brightness(1.25)}}
+.board-wrap.urgent::after{
+  content:"";position:absolute;inset:0;z-index:7;pointer-events:none;border-radius:inherit;
+  box-shadow:inset 0 0 38px 6px rgba(210,68,79,.42);animation:urgentglow .9s ease-in-out infinite alternate;
+}
+@keyframes urgentglow{from{opacity:.35}to{opacity:1}}
+
+/* ---- 連擊條（寬度固定預留，冒出來不會讓盤面上下跳） ---- */
+.comborow{display:flex;align-items:center;gap:8px;flex:0 0 auto;height:26px;margin:0 0 4px;overflow:hidden}
+.comborow .hud-combo,.comborow .hud-buff{flex:0 0 auto;padding:0 10px;border-width:2.5px;font-size:.76rem;line-height:1.55;white-space:nowrap}
+.comborow .hud-combo b{font-size:.9rem}
+.combobar{position:relative;flex:1 1 auto;min-width:40px;height:10px;margin:0;border:2px solid var(--ink);border-radius:999px;
+  background:var(--paper);overflow:hidden}
+.combobar span{position:absolute;left:0;top:0;bottom:0;width:0;background:#BDE8C8;transition:width .16s ease-out,background .2s}
+.combobar i{position:absolute;top:0;bottom:0;width:2px;background:rgba(74,59,85,.35)}
+.combobar i:nth-of-type(1){left:20%}.combobar i:nth-of-type(2){left:40%}
+.combobar i:nth-of-type(3){left:60%}.combobar i:nth-of-type(4){left:80%}
+.combobar.t1 span{background:var(--lemon-d)}
+.combobar.t2 span{background:#FFB84D}
+.combobar.t3 span{background:var(--peach-d)}
+.combobar.t4 span{background:var(--rose-d)}
+.combobar.t5 span{background:linear-gradient(90deg,#FF8FA3,#FFD65C,#7ED9A8,#8FC5F5,#B79BE8)}
+.combobar.broke{animation:combobroke .4s}
+.combobar.broke span{background:var(--danger)}
+@keyframes combobroke{20%,60%{transform:translateX(-3px)}40%,80%{transform:translateX(3px)}}
+
+/* ---- 階段橫幅 ---- */
+.stage-banner{
+  position:absolute;left:50%;top:clamp(6px,2%,14px);z-index:11;box-sizing:border-box;
+  transform:translate(-50%,-170%);max-width:calc(100% - 20px);
+  padding:6px 18px;border:3.5px solid var(--ink);border-radius:999px;background:var(--lemon);
+  font-weight:900;font-size:clamp(.85rem,2.8vmin,1.5rem);line-height:1.25;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;box-shadow:0 5px 0 rgba(74,59,85,.25);
+  animation:bannerIn 1.8s ease both;
+}
+.stage-banner.s3{background:var(--peach)}
+@keyframes bannerIn{
+  0%{transform:translate(-50%,-170%)}14%{transform:translate(-50%,10%)}20%{transform:translate(-50%,0)}
+  82%{transform:translate(-50%,0)}100%{transform:translate(-50%,-170%)}
+}
+
+/* ---- 被打到：暈眩星星、被打扁的殘影、晃動 ---- */
+.hit-stars{position:absolute;left:50%;top:1%;width:64%;z-index:6;pointer-events:none;
+  transform:translateX(-50%);animation:starsin .75s ease-out forwards}
+.hit-stars .stars-svg{display:block;width:100%;height:auto;animation:starwig .36s ease-in-out 2}
+@keyframes starsin{0%{opacity:0;transform:translate(-50%,30%) scale(.5)}20%{opacity:1;transform:translate(-50%,0) scale(1)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-18%) scale(1)}}
+@keyframes starwig{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
+.mole-slot.ghost{transition:none;will-change:auto;pointer-events:none}
+.ghost-in{width:100%;height:100%;transform-origin:50% 100%;animation:ghostsquash .6s ease-in forwards}
+@keyframes ghostsquash{
+  0%{transform:scale(1,1)}
+  16%{transform:scale(1.22,.5)}
+  55%{transform:scale(1.15,.55);opacity:1}
+  100%{transform:translateY(118%) scale(1.1,.5);opacity:0}
+}
+.mole-svg.stun{transform-origin:50% 100%;animation:stun .32s ease-in-out}
+@keyframes stun{0%,100%{transform:rotate(0)}20%{transform:rotate(-8deg)}50%{transform:rotate(7deg)}75%{transform:rotate(-3deg)}}
+
+/* ---- 暫停 ---- */
+#b-pause{flex:0 0 auto}
+.pausecard{width:min(100%,320px)}
+.ovbtns.col{flex-direction:column;align-items:stretch}
+.ovbtns.col .btn3d{flex:0 0 auto;width:100%}
+
+/* ---- 結算：頒獎台 + 本局統計 ---- */
+.ovcard{scrollbar-width:thin;scrollbar-color:var(--grape-d) transparent}
+.ovcard::-webkit-scrollbar{width:9px}
+.ovcard::-webkit-scrollbar-thumb{background:var(--grape-d);border-radius:999px;border:2px solid var(--paper)}
+.ovcard.wide .trophy{display:none}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:2px 0 10px}
+.pod{flex:1 1 0;min-width:0;max-width:150px;display:flex;flex-direction:column;text-align:center}
+.pod-who{padding:0 2px 6px;min-width:0}
+.pod-you{display:block;width:fit-content;margin:0 auto 2px;padding:0 8px;border:2px solid var(--ink);border-radius:999px;
+  background:var(--grape);font-size:.66rem;font-weight:800;line-height:1.35}
+.pod-name{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;font-weight:800;
+  font-size:.82rem;line-height:1.2;overflow-wrap:anywhere}
+.pod-score{display:block;font-size:1.25rem;line-height:1.15;font-variant-numeric:tabular-nums}
+.pod-block{display:flex;align-items:center;justify-content:center;height:var(--ph,60px);
+  border:3px solid var(--ink);border-top:8px solid var(--who,var(--grape-d));border-radius:12px 12px 0 0;
+  background:var(--cream);transform-origin:50% 100%}
+.pod.p1{--ph:96px}.pod.p1 .pod-block{background:var(--lemon)}
+.pod.p2{--ph:70px}.pod.p3{--ph:52px}
+.pod.me .pod-block{box-shadow:0 0 0 3px var(--grape-d)}
+.medal{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;border:3px solid var(--ink);
+  font-style:normal;font-weight:900;font-size:.95rem;background:#E3E7EE}
+.medal.m1{background:#FFD65C}.medal.m3{background:#E8A87C}
+.podium.fresh .pod-block{animation:podrise .55s cubic-bezier(.2,1.25,.4,1) both}
+.podium.fresh .p3 .pod-block{animation-delay:.05s}.podium.fresh .p2 .pod-block{animation-delay:.2s}.podium.fresh .p1 .pod-block{animation-delay:.38s}
+.podium.fresh .pod-who{animation:podwho .4s ease-out both}
+.podium.fresh .p3 .pod-who{animation-delay:.3s}.podium.fresh .p2 .pod-who{animation-delay:.45s}.podium.fresh .p1 .pod-who{animation-delay:.65s}
+@keyframes podrise{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes podwho{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.resrow.me{outline:3px solid var(--grape-d);outline-offset:-1px}
+.rstats{margin-top:12px;border:2.5px solid var(--ink);border-radius:16px;background:#fff;padding:10px 12px}
+.rstats h4{margin:0 0 8px;font-size:.95rem;text-align:center}
+.rgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.rcell{border:2px solid var(--line);border-radius:12px;background:var(--paper);padding:6px 4px;text-align:center;min-width:0}
+.rcell b{display:block;font-size:1.15rem;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rcell span{display:block;font-size:.7rem;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcell.warn b{color:var(--danger)}
+.rkinds{margin-top:10px}
+.rlbl{display:block;font-size:.74rem;font-weight:800;color:var(--ink-soft);margin-bottom:5px}
+.kindrow{display:flex;flex-wrap:wrap;gap:6px}
+.kind{display:inline-flex;align-items:center;gap:3px;border:2px solid var(--ink);border-radius:999px;background:var(--paper);
+  padding:1px 8px 1px 2px;font-size:.72rem;white-space:nowrap}
+.kind.good{border-color:var(--danger);background:var(--danger-bg)}
+.kind-svg{width:30px;height:30px;display:block}
+.rnone{font-size:.78rem;color:var(--ink-soft)}
+.rnew{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin-top:10px}
+.rnew[hidden]{display:none}
+.newbest{border:2.5px solid var(--ink);border-radius:999px;background:var(--lemon);padding:1px 12px;font-weight:900;font-size:.82rem;white-space:nowrap}
+.newbadge{display:inline-flex;align-items:center;gap:6px;border:2.5px solid var(--ink);border-radius:999px;background:var(--paper);
+  padding:2px 12px 2px 4px;font-size:.8rem;white-space:nowrap;animation:badgepop .5s cubic-bezier(.2,1.4,.4,1) both}
+.newbadge .badge-svg{width:30px;height:30px}
+@keyframes badgepop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+
+/* ---- 戰績畫面：各難度紀錄與成就徽章 ---- */
+.reclist{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.reccard{border:3px solid var(--ink);border-radius:18px;background:var(--paper);padding:10px 12px;min-width:0}
+.reccard h4{margin:0 0 6px;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recrow{display:flex;justify-content:space-between;gap:8px;font-size:.78rem;padding:2px 0}
+.recrow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-soft)}
+.recrow b{flex:0 0 auto;font-variant-numeric:tabular-nums}
+.recnone{margin:0;font-size:.78rem;color:var(--ink-soft)}
+.badgegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.badgecell{display:flex;gap:10px;align-items:center;border:3px solid var(--ink);border-radius:18px;background:var(--paper);padding:8px 10px;min-width:0}
+.badgecell.locked{background:#F3EFF7}
+.bpic{flex:0 0 52px}
+.badge-svg{width:52px;height:52px;display:block}
+.btxt{min-width:0}
+.btxt b{display:block;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btxt span{display:block;font-size:.74rem;color:var(--ink-soft);line-height:1.4}
+.badgecell.locked .btxt b{color:var(--ink-soft)}
+
+/* 手機橫向：結算改左右兩欄（頒獎台｜統計），不必一直捲 */
+@media (orientation:landscape) and (max-height:560px){
+  .ovcard.wide{width:min(100%,780px);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:14px;align-items:start;padding:12px 14px}
+  .ovcard.wide .trophy{display:none}
+  .ovcard.wide h3{grid-column:1/-1;margin-bottom:6px}
+  .ovcard.wide .resulttable{grid-column:1}
+  .ovcard.wide .rstats{grid-column:2;margin-top:0;padding:8px 10px}
+  .ovcard.wide .ovbtns{grid-column:1/-1;margin-top:8px}
+  .pod.p1{--ph:70px}.pod.p2{--ph:52px}.pod.p3{--ph:40px}
+  .stage-banner{padding:3px 14px;border-width:3px}
+}
+
+/* 窄手機：統計格與橫幅再縮一點，仍然單行不斷字 */
+@media (max-width:400px){
+  .pod-name{font-size:.74rem}
+  .pod-score{font-size:1.1rem}
+  .rcell b{font-size:1.02rem}
+  .rcell span{font-size:.64rem}
+  .stage-banner{padding:5px 12px}
+  .podium{gap:5px}
+}
+
+body.reduce-motion .stage-banner{animation:none;transform:translate(-50%,0)}
+body.reduce-motion .board-wrap.urgent::after,body.reduce-motion .timebar span.low,
+body.reduce-motion .podium.fresh .pod-block,body.reduce-motion .podium.fresh .pod-who,
+body.reduce-motion .newbadge,body.reduce-motion .combobar.broke{animation:none}
+
+/* 矮螢幕（手機直向小機型、橫向）：結算卡片再壓緊，讓頒獎台、統計與三顆按鈕盡量一次看完 */
+@media (max-height:720px){
+  .ovcard.wide .trophy{display:none}
+  .ovcard.wide{padding:12px 14px}
+  .ovcard.wide h3{font-size:1.1rem;margin-bottom:6px}
+  .pod.p1{--ph:74px}.pod.p2{--ph:54px}.pod.p3{--ph:40px}
+  .podium{margin-bottom:8px}
+  .rstats{margin-top:8px;padding:8px 10px}
+  .ovcard.wide .ovbtns{margin-top:8px}
+  .ovcard.wide .ovbtns .btn3d{--d:5px;min-height:44px;padding:7px 10px calc(7px + var(--d));font-size:.92rem}
+}
+@media (orientation:landscape) and (max-height:560px){
+  .ovcard.wide{padding:8px 12px}
+  .ovcard.wide h3{font-size:1rem;margin-bottom:4px}
+  .pod.p1{--ph:52px}.pod.p2{--ph:38px}.pod.p3{--ph:28px}
+  .medal{width:24px;height:24px;font-size:.8rem;border-width:2.5px}
+  .pod-block{border-top-width:6px}
+  .pod-score{font-size:1.05rem}
+  .rstats{padding:6px 8px}
+  .rstats h4{margin-bottom:5px;font-size:.85rem}
+  .rkinds{margin-top:6px}
+  .kind-svg{width:24px;height:24px}
+  .ovcard.wide .ovbtns{margin-top:6px}
+  .ovcard.wide .ovbtns .btn3d{min-height:40px;padding:4px 10px calc(4px + var(--d));font-size:.88rem}
+  .overlay{padding:6px}
+}
+
+
+/* =====================================================================
+ * 美化頒獎台：聚光燈、立體階梯、頭像與皇冠、彩帶
+ * ===================================================================== */
+.podium{position:relative;isolation:isolate;padding-top:6px;margin:0 0 12px;gap:6px}
+.podium::before{
+  content:"";position:absolute;z-index:-1;left:0;right:0;top:-4px;bottom:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 46% 80% at 50% 78%,rgba(255,226,120,.62),rgba(255,226,120,0) 70%),
+    repeating-conic-gradient(from 0deg at 50% 100%,rgba(255,236,160,.0) 0deg 9deg,rgba(255,236,160,.26) 9deg 18deg);
+  -webkit-mask-image:radial-gradient(ellipse 60% 100% at 50% 100%,#000 40%,transparent 78%);
+  mask-image:radial-gradient(ellipse 60% 100% at 50% 100%,#000 40%,transparent 78%);
+  border-radius:20px;
+}
+.pod-floor{position:absolute;z-index:-1;left:4%;right:4%;bottom:-6px;height:12px;border-radius:50%;
+  background:radial-gradient(ellipse at 50% 50%,rgba(74,59,85,.28),rgba(74,59,85,0) 70%)}
+.pod{--c1:#F4F6FA;--c2:#C9D0DC}
+.pod.g1{--c1:#FFEFA8;--c2:#FFC93C}
+.pod.g3{--c1:#F8D2B0;--c2:#DE9867}
+.pod-av{position:relative;width:var(--av,46px);aspect-ratio:1;margin:0 auto 2px;
+  filter:drop-shadow(0 3px 0 rgba(74,59,85,.18))}
+.pod.p1{--av:56px}
+.av-svg{width:100%;height:100%;display:block;overflow:visible}
+.pod-who{padding-bottom:5px}
+.pod-block{position:relative;overflow:hidden;border:3px solid var(--ink);border-top:0;border-radius:10px 10px 0 0;
+  background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:inset 0 -8px 0 rgba(74,59,85,.1)}
+.pod-block::before{content:"";position:absolute;left:0;right:0;top:0;height:9px;background:var(--who,var(--grape-d));
+  border-bottom:3px solid var(--ink);box-shadow:inset 0 3px 0 rgba(255,255,255,.35)}
+.pod-block::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.7) 48%,transparent 58%)}
+.pod-no{position:relative;margin-top:8px;font-style:normal;font-weight:900;font-size:1.9rem;line-height:1;color:var(--ink);
+  text-shadow:0 2px 0 rgba(255,255,255,.75),0 0 8px rgba(255,255,255,.5)}
+.pod.p1 .pod-no{font-size:2.3rem}
+.pod.p1{--ph:104px}.pod.p2{--ph:76px}.pod.p3{--ph:56px}
+.pod.me .pod-block{box-shadow:inset 0 -8px 0 rgba(74,59,85,.1),0 0 0 3px var(--grape-d)}
+.podium.fresh .pod-av{animation:avdrop .55s cubic-bezier(.3,1.5,.5,1) both}
+.podium.fresh .p3 .pod-av{animation-delay:.3s}.podium.fresh .p2 .pod-av{animation-delay:.45s}.podium.fresh .p1 .pod-av{animation-delay:.65s}
+.podium.fresh .g1 .pod-block::after{animation:podshine 1.1s ease-out 1.1s 1 both}
+@keyframes avdrop{from{opacity:0;transform:translateY(-26px) scale(.7)}to{opacity:1;transform:none}}
+@keyframes podshine{0%{opacity:1;transform:translateX(-80%)}100%{opacity:1;transform:translateX(80%)}}
+.confetti{position:absolute;inset:-6px 0 0;overflow:hidden;pointer-events:none;z-index:2}
+.confetti i{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;background:var(--c);transform:rotate(var(--r));
+  animation:confall 2.1s ease-in var(--d) both}
+@keyframes confall{0%{opacity:0;transform:translateY(0) rotate(var(--r))}10%{opacity:1}
+  100%{opacity:0;transform:translateY(190px) rotate(calc(var(--r) + 300deg))}}
+.medal{display:none}
+
+@media (max-height:720px){
+  .pod-av{--av:38px}.pod.p1{--av:46px}
+  .pod.p1{--ph:82px}.pod.p2{--ph:60px}.pod.p3{--ph:44px}
+  .pod-no{font-size:1.5rem;margin-top:6px}.pod.p1 .pod-no{font-size:1.8rem}
+}
+@media (orientation:landscape) and (max-height:560px){
+  .pod-av{--av:28px}.pod.p1{--av:34px}
+  .pod.p1{--ph:54px}.pod.p2{--ph:40px}.pod.p3{--ph:30px}
+  .pod-no{font-size:1.1rem;margin-top:4px}.pod.p1 .pod-no{font-size:1.3rem}
+  .pod-block::before{height:6px}
+  .pod-who{padding-bottom:3px}
+  .podium{margin-bottom:6px}
+}
+@media (max-width:400px){ .podium{gap:4px} }
+body.reduce-motion .podium.fresh .pod-av,body.reduce-motion .podium.fresh .g1 .pod-block::after,body.reduce-motion .confetti i{animation:none}
+body.reduce-motion .confetti{display:none}
+
+/* 小手機（360×640 等）：結算卡片再壓緊，讓頒獎台、統計與按鈕不必捲動就看得到 */
+@media (max-height:700px) and (max-width:420px){
+  .ovcard.wide{padding:10px 12px}
+  .ovcard.wide h3{margin-bottom:4px}
+  .pod.p1{--ph:68px}.pod.p2{--ph:50px}.pod.p3{--ph:36px}
+  .podium{margin-bottom:6px}
+  .rstats h4{display:none}
+  .rstats{margin-top:6px;padding:7px 9px}
+  .rkinds{margin-top:6px}
+  .rnew{margin-top:6px}
+}
+
+@media (orientation:landscape) and (max-height:560px){
+  .comborow{height:22px;margin-bottom:3px}
+  .combobar{height:7px}
+  .comborow .hud-combo,.comborow .hud-buff{font-size:.7rem;line-height:1.4}
+  .ovcard.wide .resulttable{grid-column:1;grid-row:2}
+  .ovcard.wide .rnew{grid-column:1;grid-row:3;align-self:center}
+  .ovcard.wide .rstats{grid-column:2;grid-row:2}
+  .ovcard.wide .ovbtns{grid-column:2;grid-row:3;margin-top:6px;flex-wrap:nowrap;gap:6px}
+  .ovcard.wide .ovbtns .btn3d{flex:1 1 0;min-width:0;min-height:44px;padding:3px 6px calc(3px + var(--d));font-size:.82rem}
+}
+
+/* HUD 永遠一排、高度固定：階段標籤吸收長短差異（過長才省略），盤面不會因為字變長或分數位數變多而上下跳。
+   連擊／加倍牌已移到時間條下方專用的一列（.comborow），不再擠進 HUD。 */
+.hud-stage{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+.hud-time,.hud-score{flex:0 0 auto}
+@media (max-width:600px){ .hud{padding-right:112px} }
+@media (max-width:400px){
+  .hud{gap:5px;padding-right:110px}
+  .hud-time,.hud-score{min-width:52px;padding:3px 6px}
+  .hud-stage{padding:4px 8px;font-size:.74rem}
+}
+
+/* 手機橫向：結算右欄（統計＋按鈕）再壓一點，三顆按鈕不被切掉 */
+@media (orientation:landscape) and (max-height:560px){
+  .ovcard.wide{padding:6px 12px}
+  .ovcard.wide h3{margin-bottom:2px}
+  .rstats h4{display:none}
+  .rnew{margin-top:0}
+  .rstats{padding:6px 8px}
+}
+
+/* 手機橫向（寬度夠）：連擊條＋連擊／加倍牌浮在 HUD 右側的空位，不再另外占一列高度，盤面才不會被擠矮 */
+@media (orientation:landscape) and (max-height:560px) and (min-width:760px){
+  .stage{position:relative}
+  .comborow{position:absolute;z-index:3;top:calc(4px + var(--safe-t));left:420px;right:122px;height:44px;margin:0}
+}

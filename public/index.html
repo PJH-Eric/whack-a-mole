@@ -189,6 +189,7 @@
       <!-- 主舞台：盤面盡量大 -->
       <div class="stage" id="stage">
         <div class="hud" id="hud">
+          <button class="iconbtn hud-back" id="b-pause" type="button" hidden title="暫停" aria-label="暫停" data-act="pause-open" data-i18n-attr="title=hud.pause;aria-label=hud.pause"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="5" y="4" width="5" height="16" rx="1.5" fill="currentColor"/><rect x="14" y="4" width="5" height="16" rx="1.5" fill="currentColor"/></svg></button>
           <button class="iconbtn hud-back" id="b-quit" type="button" title="離開這一局" aria-label="離開這一局" data-i18n-attr="title=hud.quit;aria-label=hud.quit">◀</button>
           <div class="hud-time" id="hud-time">
             <span class="hud-lbl" data-i18n="hud.remain">剩餘</span>
@@ -200,11 +201,14 @@
             <span class="hud-lbl" data-i18n="hud.score">我的分數</span>
             <b id="hud-score">0</b>
           </div>
-          <div class="hud-combo" id="hud-combo" hidden><b id="hud-combo-n">0</b> <span data-i18n="hud.combo">連擊</span></div>
-          <div class="hud-buff" id="hud-buff" hidden data-i18n="hud.buff">🌈 加倍中</div>
         </div>
 
         <div class="timebar" aria-hidden="true"><span id="timebar-fill"></span></div>
+        <div class="comborow">
+          <div class="combobar t0" id="combobar" aria-hidden="true"><span id="combobar-fill"></span><i></i><i></i><i></i><i></i></div>
+          <div class="hud-combo" id="hud-combo" hidden><b id="hud-combo-n">0</b> <span data-i18n="hud.combo">連擊</span></div>
+          <div class="hud-buff" id="hud-buff" hidden data-i18n="hud.buff">🌈 加倍中</div>
+        </div>
 
         <div class="board-wrap" id="board-wrap">
           <div class="board" id="board"></div>
@@ -245,7 +249,21 @@
               <div class="trophy" id="ov-trophy"></div>
               <h3 id="ov-result-title" data-i18n="result.timeUpBang">時間到！</h3>
               <div class="resulttable" id="result-table"></div>
+              <div class="rstats" id="result-stats" hidden></div>
+              <div class="rnew" id="result-new" hidden></div>
               <div class="ovbtns" id="ov-result-btns"></div>
+            </div>
+          </div>
+
+          <div class="overlay" id="ov-pause" hidden role="dialog" aria-modal="true" aria-labelledby="ov-pause-title">
+            <div class="ovcard pausecard">
+              <h3 id="ov-pause-title" data-i18n="pause.title">暫停中</h3>
+              <div class="ovbtns col">
+                <button class="btn3d big" data-color="mint" id="b-resume" type="button" data-act="pause-resume"><span data-i18n="pause.resume">繼續</span></button>
+                <button class="btn3d" data-color="sky" type="button" data-act="pause-restart"><span data-i18n="pause.restart">重新開始</span></button>
+                <button class="btn3d" data-color="cream" type="button" data-act="pause-home"><span data-i18n="pause.home">回首頁</span></button>
+              </div>
+              <p class="ovnote" data-i18n="pause.hint">按 Esc 也可以繼續</p>
             </div>
           </div>
 
@@ -301,6 +319,10 @@
         <h2 data-i18n="stats.title">我的戰績</h2><span class="spacer"></span>
       </div>
       <div class="statgrid" id="stat-grid"></div>
+      <h3 class="lbl" data-i18n="stats.records">各難度紀錄</h3>
+      <div class="reclist" id="rec-list"></div>
+      <h3 class="lbl" data-i18n="stats.badges">成就徽章</h3>
+      <div class="badgegrid" id="badge-grid"></div>
       <p class="note" data-i18n="stats.note">戰績只存在這台裝置的瀏覽器裡，沒有上傳到任何伺服器；換裝置或清掉瀏覽器資料就會歸零。</p>
       <div class="panel-foot">
         <button class="btn3d small" data-color="cream" id="b-stats-reset"><span data-i18n="stats.reset">清除本機戰績</span></button>
