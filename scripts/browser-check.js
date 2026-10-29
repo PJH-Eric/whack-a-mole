@@ -630,14 +630,14 @@ async function main() {
     ok(onSetup.cursor.indexOf('data:image') < 0, '設定畫面用一般游標', onSetup.cursor.slice(0, 30));
 
     await page.click('#b-solo-start');
-    /* 倒數中也還沒開打 */
+    /* 倒數中游標就先換成槌子 */
     await sleep(260);
     const counting = await page.evaluate(() => ({
       playing: document.body.classList.contains('playing'),
       cursor: getComputedStyle(document.querySelector('.hole')).cursor
     }));
-    ok(!counting.playing, '開賽倒數還不算「在打」');
-    ok(counting.cursor.indexOf('data:image') < 0, '倒數中維持一般游標', counting.cursor.slice(0, 30));
+    ok(counting.playing, '開賽倒數時游標就先是槌子（算「在打」）');
+    ok(counting.cursor.indexOf('data:image') >= 0, '倒數中游標已是槌子', counting.cursor.slice(0, 30));
 
     await sleep(3600);
     const applied = await page.evaluate(() => ({
