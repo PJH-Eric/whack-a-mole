@@ -909,3 +909,56 @@ body.reduce-motion .confetti{display:none}
   .stage{position:relative}
   .comborow{position:absolute;z-index:3;top:calc(4px + var(--safe-t));left:420px;right:122px;height:44px;margin:0}
 }
+
+/* 手機橫向（寬度 640～759）：階段標籤收成短版、連擊條浮到 HUD 右側空位，同樣不另占一列 */
+@media (orientation:landscape) and (max-height:560px) and (min-width:640px) and (max-width:759px){
+  .hud-stage .stage-no{display:none}
+  .stage{position:relative}
+  .comborow{position:absolute;z-index:3;top:calc(4px + var(--safe-t));left:300px;right:122px;height:44px;margin:0}
+}
+
+/* 小手機直向（360×640 等）：結算卡片再壓緊，且三顆按鈕固定貼在卡片底部，
+   即使「新紀錄／新成就」讓內容變長需要捲動，按鈕也永遠看得到 */
+@media (max-width:420px) and (orientation:portrait){
+  .ovcard.wide .ovbtns{position:sticky;bottom:-16px;z-index:2;margin:8px -16px -16px;padding:8px 16px 16px;
+    background:linear-gradient(180deg,rgba(255,253,248,0),var(--paper) 14px);border-radius:0 0 20px 20px}
+}
+@media (max-height:700px) and (max-width:420px){
+  .ovcard.wide h3{font-size:1rem;margin-bottom:2px}
+  .rcell{padding:4px 3px}
+  .rcell b{font-size:.98rem}
+  .kind-svg{width:24px;height:24px}
+  .rkinds{margin-top:4px}
+  .rlbl{margin-bottom:3px;font-size:.7rem}
+  .rnew{margin-top:5px;gap:6px}
+  .newbadge .badge-svg{width:24px;height:24px}
+  .newbest,.newbadge{font-size:.74rem}
+}
+
+@media (max-height:700px) and (max-width:420px){
+  .pod-av{--av:34px}.pod.p1{--av:40px}
+  .pod.p1{--ph:62px}.pod.p2{--ph:46px}.pod.p3{--ph:34px}
+}
+/* 超矮的手機橫向（高度 360 以下）：標題與「打過的地鼠」列先收起來，頒獎台、數字與三顆按鈕一屏看完 */
+@media (orientation:landscape) and (max-height:360px){
+  .ovcard.wide h3{display:none}
+  .ovcard.wide .rkinds{display:none}
+  .overlay{padding:4px}
+}
+
+@media (max-height:700px) and (max-width:420px){
+  .pod.p1{--ph:56px}.pod.p2{--ph:42px}.pod.p3{--ph:32px}
+  .pod-who{padding-bottom:3px}
+  .podium{margin-bottom:4px}
+}
+@media (orientation:landscape) and (max-height:360px){
+  .ovcard.wide .resulttable{grid-column:1;grid-row:2 / span 3}
+  .ovcard.wide .rnew{grid-column:2;grid-row:3;margin:4px 0 0}
+  .ovcard.wide .ovbtns{grid-column:2;grid-row:4;margin-top:4px}
+  .ovcard.wide .newbest,.ovcard.wide .newbadge{font-size:.7rem}
+}
+@media (orientation:landscape) and (max-height:360px){
+  .ovcard.wide .newbadge b{display:none}
+  .ovcard.wide .newbadge{padding:2px 4px}
+  .ovcard.wide .rnew{flex-wrap:nowrap;justify-content:flex-start}
+}
