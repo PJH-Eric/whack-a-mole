@@ -232,12 +232,6 @@
     var rec = holes[ev.hole];
     if (!rec) return;
 
-    if (!reduceMotion) {
-      rec.el.classList.remove('shake');
-      void rec.el.offsetWidth;
-      rec.el.classList.add('shake');
-      setTimeout(function () { rec.el.classList.remove('shake'); }, 320);
-    }
 
     if (ev.k === 'hit') hitFx(rec, ev);
 
@@ -248,15 +242,12 @@
       text = (ev.gain >= 0 ? '+' : '') + ev.gain;
       if (ev.buffed) text += ' ×2';
       else if (ev.multiplier > 1.001) text += ' ×' + ev.multiplier.toFixed(1);
-      rec.flash.className = 'hole-flash on ' + (ev.gain >= 0 ? 'hit-good' : 'hit-bad');
     } else if (ev.k === 'miss') {
       cls += ' miss';
       text = '空槌';
-      rec.flash.className = 'hole-flash on hit-miss';
     } else {
       return;
     }
-    setTimeout(function () { rec.flash.className = 'hole-flash'; }, 260);
 
     if (o.who) text = o.who + ' ' + text;
 
