@@ -1553,6 +1553,7 @@
       if (S.mode === 'solo') {
         if (!S.solo.state) return;
         if (S.paused) return;
+        Board.swing(hole, Store.hammerStyle());
         var tnow = srvNow();
         var res = Rules.whack(S.solo.state, 'me', { hole: hole, moleId: moleId }, tnow);
         if (res.ok) { S.match = Rules.snapshot(S.solo.state, tnow); handleEvents([res.event], tnow); }
@@ -1560,6 +1561,7 @@
       }
       if (S.mode === 'online') {
         if (!S.view || !S.view.you.can.whack) return;
+        Board.swing(hole, Store.hammerStyle());
         /* 先給一點手感回饋，真正的判定結果等伺服器的 room:events */
         Sound.play('tick');
         Online.send('room:whack', { hole: hole, moleId: moleId || 0 });
