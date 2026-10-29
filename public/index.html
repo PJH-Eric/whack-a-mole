@@ -376,6 +376,11 @@
           <label for="set-hammer"><span data-i18n="settings.hammer">鐵鎚滑鼠游標</span><small data-i18n="settings.hammerSub">對局時把滑鼠變成小槌子，觸控裝置沒有影響</small></label>
           <input type="checkbox" id="set-hammer" class="switch">
         </div>
+        <div class="setrow hamset">
+          <label><span data-i18n="settings.hammerStyle">槌子外觀</span><small data-i18n="settings.hammerStyleSub">游標、敲擊動畫與結算畫面都會換成這把槌子</small></label>
+          <button type="button" class="hamstage" id="ham-stage" data-i18n-attr="aria-label=hammer.try" aria-label="點一下試揮"><span class="hamhole"></span><span class="hamidle" id="ham-idle"></span><span class="hamtry" data-i18n="hammer.try">點一下試揮</span></button>
+          <div class="hamopts" id="ham-opts" role="radiogroup" aria-label="槌子外觀" data-i18n-attr="aria-label=settings.hammerStyle"></div>
+        </div>
         <div class="setrow"><span class="setlbl" data-i18n="settings.lang">語言</span><span id="set-lang-slot"></span></div>
         <p class="setinfo" id="set-audio-note"></p>
       </div>

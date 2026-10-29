@@ -180,6 +180,7 @@
     $('set-motion').checked = Store.reduceMotion();
     $('set-mark').checked = Store.bigMark();
     $('set-hammer').checked = Store.hammerCursor();
+    paintHammerPicker();
     $('set-audio-note').textContent = Sound.isUnlocked()
       ? '' : (globalThis.I18N ? globalThis.I18N.t("text.121") : "瀏覽器規定要先碰一下畫面才會出聲，按任何一顆按鈕就會解鎖。");
   }
@@ -190,17 +191,52 @@
     applyHammerCursor();
   }
 
-  /* 鐵鎚游標的圖從 SvgUI 產生，寫成 CSS 變數讓樣式表去套。
+  /* 鐵鎚的圖從 SvgUI 產生，寫成 CSS 變數讓樣式表去套：
+     --cur-hammer(-hit) 是滑鼠游標，--ham-deco 是結算／戰績標題前的小裝飾。
      觸控裝置的判斷交給 CSS 的 (hover:hover)，這裡只管開關與圖。 */
+  var hamKey = '';
   function applyHammerCursor() {
     var on = Store.hammerCursor();
+    var st = Store.hammerStyle();
     document.body.classList.toggle('hammer-cursor', on);
-    if (!on) return;
     var root = document.documentElement.style;
-    if (!root.getPropertyValue('--cur-hammer')) {
-      root.setProperty('--cur-hammer', SvgUI.hammerCursor(false));
-      root.setProperty('--cur-hammer-hit', SvgUI.hammerCursor(true));
+    if (hamKey !== st) {
+      hamKey = st;
+      root.setProperty('--cur-hammer', SvgUI.hammerCursor(false, st));
+      root.setProperty('--cur-hammer-hit', SvgUI.hammerCursor(true, st));
+      root.setProperty('--ham-deco', SvgUI.hammerDeco(st));
     }
+  }
+
+  /* 設定裡的槌子外觀：三張卡片＋可以點一下試揮的預覽台 */
+  function paintHammerPicker() {
+    var cur = Store.hammerStyle();
+    $('ham-opts').innerHTML = SvgUI.HAMMER_STYLES.map(function (k) {
+      var on = k === cur;
+      return '<button type="button" class="hamopt' + (on ? ' on' : '') + '" role="radio" aria-checked="' + on + '" data-ham="' + k + '">'
+        + SvgUI.hammer(k) + '<span>' + esc(w.I18N.t('hammer.' + k)) + '</span></button>';
+    }).join('');
+    $('ham-idle').innerHTML = SvgUI.hammer(cur);
+    $('ham-stage').setAttribute('data-style', cur);
+  }
+
+  var hamPrevTimer = 0;
+  function previewSwing() {
+    var stage = $('ham-stage');
+    if (Store.reduceMotion()) return;
+    stage.classList.remove('swinging');
+    var old = stage.querySelector('.swing-ham');
+    if (old) old.parentNode.removeChild(old);
+    var n = document.createElement('span');
+    n.className = 'swing-ham';
+    n.innerHTML = SvgUI.hammer(Store.hammerStyle());
+    stage.appendChild(n);
+    stage.classList.add('swinging');
+    clearTimeout(hamPrevTimer);
+    hamPrevTimer = setTimeout(function () {
+      stage.classList.remove('swinging');
+      if (n.parentNode) n.parentNode.removeChild(n);
+    }, 460);
   }
 
   /* ============================================================
@@ -1345,6 +1381,13 @@
     $('set-sfx-vol').addEventListener('change', function () { Sound.setSfxVolume(this.value / 100); Sound.play('click'); });
     $('set-motion').addEventListener('change', function () { Store.reduceMotion(this.checked); applyDisplayPrefs(); });
     $('set-mark').addEventListener('change', function () { Store.bigMark(this.checked); applyDisplayPrefs(); });
+    $('ham-opts').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-ham]') : null;
+      if (!b) return;
+      Store.hammerStyle(b.getAttribute('data-ham'));
+      applyHammerCursor(); paintHammerPicker(); previewSwing();
+    });
+    $('ham-stage').addEventListener('click', previewSwing);
     $('set-hammer').addEventListener('change', function () { Store.hammerCursor(this.checked); applyDisplayPrefs(); });
     $('b-settings-reset').addEventListener('click', function () {
       Sound.resetDefaults(); Store.resetDefaults(); applyDisplayPrefs(); syncSettingsUi();
@@ -1484,6 +1527,7 @@
 
     w.I18N.mountToggle({ after: $('b-settings') });
     w.I18N.onChange(function () {
+      paintHammerPicker();
       S.sigs = {};
       if (S.connection) connStatus(S.connection);
       if (S.roomList) paintRoomList(S.roomList);
@@ -1509,6 +1553,7 @@
       if (S.mode === 'solo') {
         if (!S.solo.state) return;
         if (S.paused) return;
+        Board.swing(hole, Store.hammerStyle());
         var tnow = srvNow();
         var res = Rules.whack(S.solo.state, 'me', { hole: hole, moleId: moleId }, tnow);
         if (res.ok) { S.match = Rules.snapshot(S.solo.state, tnow); handleEvents([res.event], tnow); }
@@ -1516,6 +1561,7 @@
       }
       if (S.mode === 'online') {
         if (!S.view || !S.view.you.can.whack) return;
+        Board.swing(hole, Store.hammerStyle());
         /* 先給一點手感回饋，真正的判定結果等伺服器的 room:events */
         Sound.play('tick');
         Online.send('room:whack', { hole: hole, moleId: moleId || 0 });

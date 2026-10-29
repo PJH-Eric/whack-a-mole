@@ -19,6 +19,7 @@
     board: 'wam_board',
     roundSec: 'wam_round_sec',
     hammerCursor: 'wam_hammer_cursor',
+    hammerStyle: 'wam_hammer_style',
     sidebarOpen: 'wam_sidebar',
     records: 'wam_records',
     totals: 'wam_totals',
@@ -148,6 +149,12 @@
     /* 本機偏好的一局長度；建立線上房間時先沿用，之後仍由房主決定 */
     roundSec: function (v) { if (v === undefined) return getNum(KEY.roundSec, 0); set(KEY.roundSec, v); return v; },
     hammerCursor: function (v) { if (v === undefined) return getFlag(KEY.hammerCursor, true); setFlag(KEY.hammerCursor, v); return v; },
+    hammerStyle: function (v) {
+      var ok = ['classic', 'soft', 'gold'];
+      if (v === undefined) { var g = get(KEY.hammerStyle, 'classic'); return ok.indexOf(g) < 0 ? 'classic' : g; }
+      if (ok.indexOf(v) < 0) v = 'classic';
+      set(KEY.hammerStyle, v); return v;
+    },
     sidebarOpen: function (v) { if (v === undefined) return getFlag(KEY.sidebarOpen, true); setFlag(KEY.sidebarOpen, v); return v; },
     best: best,
     BADGES: BADGES,
@@ -162,6 +169,7 @@
       setFlag(KEY.vibrate, true);
       setFlag(KEY.bigMark, true);
       setFlag(KEY.hammerCursor, true);
+      set(KEY.hammerStyle, 'classic');
     }
   };
 }(window));

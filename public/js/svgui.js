@@ -419,33 +419,94 @@
       + '<path d="M26 79 q7 -4 14 -1 M60 80 q7 -4 14 -1" stroke="#A87D4E" stroke-width="3.4" stroke-linecap="round" fill="none"/>';
   }
 
-  /* ---- 槌子（滑鼠游標 / 命中特效） ---- */
-  function hammer() {
-    return '<svg viewBox="0 0 100 100" class="hammer-svg" aria-hidden="true">' +
-      '<rect x="44" y="40" width="13" height="52" rx="6" fill="#C9A177" stroke="' + INK + '" stroke-width="4"/>' +
-      '<rect x="16" y="14" width="68" height="32" rx="12" fill="#FF8FA8" stroke="' + INK + '" stroke-width="4"/>' +
-      '<rect x="24" y="20" width="28" height="10" rx="5" fill="#fff" opacity=".5"/>' +
-      '</svg>';
+  /* ---- 槌子（滑鼠游標 / 揮槌動畫 / 設定預覽 / 結算裝飾） ----
+   * 三款手繪向量槌子，同一個 100×100 座標：槌頭在上（約 y12–46、中心 50,29），
+   * 握把朝下。全部用純色疊層做出立體感（不用漸層 id，才不會在隱藏的彈窗裡失效）。 */
+  var HAMMER_STYLES = ['classic', 'soft', 'gold'];
+
+  function hammerArt(style) {
+    var I = INK;
+    if (style === 'soft') {
+      return ''
+        + '<rect x="45" y="40" width="10" height="46" rx="5" fill="#FFF1D6" stroke="' + I + '" stroke-width="4"/>'
+        + '<path d="M45 52l10-6M45 62l10-6M45 72l10-6" stroke="#FF8FA8" stroke-width="3.4" stroke-linecap="round"/>'
+        + '<circle cx="50" cy="88" r="7.5" fill="#FF8FA8" stroke="' + I + '" stroke-width="4"/>'
+        + '<circle cx="47.5" cy="85.5" r="2.2" fill="#fff" opacity=".65"/>'
+        + '<rect x="11" y="9" width="78" height="40" rx="20" fill="#FF9DB5" stroke="' + I + '" stroke-width="4.5"/>'
+        + '<rect x="22" y="9" width="6" height="40" fill="#FFF1D6" stroke="' + I + '" stroke-width="3"/>'
+        + '<rect x="72" y="9" width="6" height="40" fill="#FFF1D6" stroke="' + I + '" stroke-width="3"/>'
+        + '<rect x="30" y="14" width="22" height="7" rx="3.5" fill="#fff" opacity=".6"/>'
+        + '<ellipse cx="36" cy="35" rx="5" ry="3" fill="#FF6F94" opacity=".6"/>'
+        + '<ellipse cx="64" cy="35" rx="5" ry="3" fill="#FF6F94" opacity=".6"/>'
+        + '<circle cx="43" cy="29" r="2.6" fill="' + I + '"/><circle cx="57" cy="29" r="2.6" fill="' + I + '"/>'
+        + '<path d="M46.5 34q3.5 3.6 7 0" fill="none" stroke="' + I + '" stroke-width="2.4" stroke-linecap="round"/>'
+        + '<rect x="14" y="40" width="72" height="6" rx="3" fill="#E0577F" opacity=".18"/>';
+    }
+    if (style === 'gold') {
+      return ''
+        + '<rect x="43" y="38" width="14" height="55" rx="7" fill="#7A4A2B" stroke="' + I + '" stroke-width="4"/>'
+        + '<rect x="45.5" y="42" width="3" height="46" rx="1.5" fill="#fff" opacity=".22"/>'
+        + '<rect x="41" y="52" width="18" height="6" rx="2.5" fill="#FFD65C" stroke="' + I + '" stroke-width="3"/>'
+        + '<rect x="41" y="70" width="18" height="6" rx="2.5" fill="#FFD65C" stroke="' + I + '" stroke-width="3"/>'
+        + '<rect x="40" y="86" width="20" height="8" rx="4" fill="#FFD65C" stroke="' + I + '" stroke-width="3.5"/>'
+        + '<rect x="9" y="10" width="82" height="38" rx="10" fill="#FFD65C" stroke="' + I + '" stroke-width="4.5"/>'
+        + '<rect x="9" y="10" width="17" height="38" rx="9" fill="#E8A92A" stroke="' + I + '" stroke-width="4.5"/>'
+        + '<rect x="74" y="10" width="17" height="38" rx="9" fill="#E8A92A" stroke="' + I + '" stroke-width="4.5"/>'
+        + '<path d="M34 22h32M34 36h32" stroke="#E8A92A" stroke-width="2.6" stroke-linecap="round"/>'
+        + '<rect x="30" y="14" width="30" height="5" rx="2.5" fill="#fff" opacity=".6"/>'
+        + '<rect x="12" y="41" width="76" height="5" rx="2.5" fill="#B87812" opacity=".3"/>'
+        + '<circle cx="50" cy="29" r="7" fill="#FF5C7A" stroke="' + I + '" stroke-width="3"/>'
+        + '<circle cx="47.6" cy="26.6" r="2" fill="#fff" opacity=".8"/>'
+        + '<svg x="12" y="12" width="76" height="34" overflow="hidden"><g class="ham-shine"><rect x="-26" y="-4" width="12" height="44" fill="#fff" opacity=".7" transform="skewX(-20)"/></g></svg>';
+    }
+    /* classic：經典木槌 —— 木紋槌頭＋金屬箍＋纏帶握把 */
+    return ''
+      + '<rect x="43" y="38" width="14" height="55" rx="7" fill="#D9A066" stroke="' + I + '" stroke-width="4"/>'
+      + '<path d="M47.5 46v38M52.5 50v30" stroke="#A8703A" stroke-width="2" stroke-linecap="round" opacity=".7"/>'
+      + '<rect x="45" y="40" width="3" height="48" rx="1.5" fill="#fff" opacity=".3"/>'
+      + '<rect x="42" y="68" width="16" height="22" rx="6" fill="#8B5A33" stroke="' + I + '" stroke-width="3.5"/>'
+      + '<path d="M43 74l14 4M43 82l14 4" stroke="#C9A177" stroke-width="2.4" stroke-linecap="round"/>'
+      + '<rect x="12" y="12" width="76" height="34" rx="11" fill="#C27F45" stroke="' + I + '" stroke-width="4.5"/>'
+      + '<rect x="12" y="12" width="14" height="34" rx="8" fill="#9A5F2F" stroke="' + I + '" stroke-width="4.5"/>'
+      + '<rect x="74" y="12" width="14" height="34" rx="8" fill="#9A5F2F" stroke="' + I + '" stroke-width="4.5"/>'
+      + '<path d="M36 23h28M38 30h24M36 37h28" stroke="#8F5A2C" stroke-width="2.2" stroke-linecap="round" opacity=".65"/>'
+      + '<rect x="29" y="11" width="7" height="36" fill="#CFD8E2" stroke="' + I + '" stroke-width="3"/>'
+      + '<rect x="64" y="11" width="7" height="36" fill="#CFD8E2" stroke="' + I + '" stroke-width="3"/>'
+      + '<rect x="30.5" y="13" width="2" height="32" fill="#fff" opacity=".7"/>'
+      + '<rect x="39" y="15" width="22" height="5" rx="2.5" fill="#fff" opacity=".35"/>'
+      + '<rect x="15" y="40" width="70" height="5" rx="2.5" fill="#000" opacity=".12"/>';
+  }
+
+  function hammer(style) {
+    return '<svg viewBox="0 0 100 100" class="hammer-svg" aria-hidden="true">' + hammerArt(style) + '</svg>';
+  }
+
+  function dataUrl(svg) {
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
   }
 
   /* ---- 可愛鐵鎚滑鼠游標 ----
-   * 和命中特效同一支槌子，斜著拿。游標圖一定要有明確的 width/height
+   * 和其他地方同一支槌子，斜著拿。游標圖一定要有明確的 width/height
    * （不能只給 viewBox），而且 Chrome 只吃 128px 以內，所以固定畫成 64px。
    * 熱點放在槌頭中心：玩家覺得「打到的是槌頭」，不是滑鼠箭頭的尖端。
    */
-  function hammerCursor(hit) {
+  function hammerCursor(hit, style) {
     var deg = hit ? 44 : 18;   // 按下去時多甩一點，像真的敲下去
     var q = String.fromCharCode(34);
     var svg =
       '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 100 100">' +
-        '<g transform="translate(0,4) rotate(' + deg + ' 50 30)">' +
-          '<rect x="43" y="30" width="14" height="60" rx="7" fill="#C9A177" stroke="' + INK + '" stroke-width="5"/>' +
-          '<rect x="16" y="12" width="68" height="32" rx="13" fill="#FF8FA8" stroke="' + INK + '" stroke-width="5"/>' +
-          '<rect x="24" y="19" width="26" height="9" rx="4.5" fill="#fff" opacity=".55"/>' +
-        '</g>' +
+        '<g transform="translate(0,4) rotate(' + deg + ' 50 30)">' + hammerArt(style) + '</g>' +
       '</svg>';
     /* 32 21 = 槌頭中心換算到 64px 圖上的座標 */
-    return 'url(' + q + 'data:image/svg+xml,' + encodeURIComponent(svg) + q + ') 32 21, pointer';
+    return 'url(' + q + dataUrl(svg) + q + ') 32 21, pointer';
+  }
+
+  /* 結算、戰績標題前面的小裝飾（CSS 變數用的 url()） */
+  function hammerDeco(style) {
+    var q = String.fromCharCode(34);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 100 100">' +
+      '<g transform="rotate(-24 50 50)">' + hammerArt(style) + '</g></svg>';
+    return 'url(' + q + dataUrl(svg) + q + ')';
   }
 
   /* ---- 標題 LOGO ---- */
@@ -454,10 +515,7 @@
       '<ellipse cx="160" cy="112" rx="130" ry="16" fill="#C9B6F5" opacity=".45"/>' +
       '<g transform="translate(28,26) scale(0.62)">' + MOLE_ART.mole() + '</g>' +
       '<g transform="translate(196,20) scale(0.55)">' + MOLE_ART.bunny() + '</g>' +
-      '<g transform="translate(122,4) rotate(18) scale(0.66)">' +
-      '<rect x="44" y="40" width="13" height="52" rx="6" fill="#C9A177" stroke="' + INK + '" stroke-width="4"/>' +
-      '<rect x="16" y="14" width="68" height="32" rx="12" fill="#FF8FA8" stroke="' + INK + '" stroke-width="4"/>' +
-      '</g>' +
+      '<g transform="translate(118,6) rotate(18) scale(0.66)">' + hammerArt('classic') + '</g>' +
       '</svg>';
   }
 
@@ -503,6 +561,9 @@
     holeFront: holeFront,
     hammer: hammer,
     hammerCursor: hammerCursor,
+    hammerArt: hammerArt,
+    hammerDeco: hammerDeco,
+    HAMMER_STYLES: HAMMER_STYLES,
     logo: logo,
     trophy: trophy,
     bgDeco: bgDeco

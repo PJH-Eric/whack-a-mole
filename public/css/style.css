@@ -962,3 +962,64 @@ body.reduce-motion .confetti{display:none}
   .ovcard.wide .newbadge{padding:2px 4px}
   .ovcard.wide .rnew{flex-wrap:nowrap;justify-content:flex-start}
 }
+
+/* ============================================================
+ * 槌子外觀：揮槌動畫、設定預覽、結算與戰績標題裝飾
+ * ============================================================ */
+.swing-ham{
+  position:absolute;pointer-events:none;z-index:7;display:block;
+  transform-origin:50% 90%;opacity:0;
+  animation:hamSwing .44s cubic-bezier(.3,.1,.3,1) forwards;
+}
+.swing-ham .hammer-svg{width:100%;height:100%;display:block;overflow:visible;filter:drop-shadow(0 3px 2px rgba(60,40,90,.28))}
+.swing-ham .ham-shine{animation:hamShine .34s .1s ease-out 1 both}
+@keyframes hamSwing{
+  0%{transform:rotate(-58deg) translateY(-8%);opacity:0}
+  14%{opacity:1}
+  42%{transform:rotate(16deg) translateY(10%);opacity:1}
+  56%{transform:rotate(9deg) translateY(7%);opacity:1}
+  100%{transform:rotate(-18deg) translateY(-3%);opacity:0}
+}
+@keyframes hamShine{from{transform:translateX(0)}to{transform:translateX(110px)}}
+body.reduce-motion .swing-ham{display:none}
+
+/* 設定裡的選擇器 */
+.hamset{align-items:stretch}
+.hamset label{flex:1 1 100%}
+.hamstage{
+  position:relative;flex:0 0 112px;height:96px;margin:0;padding:0;border:3px solid var(--ink,#4a3a66);
+  border-radius:16px;background:linear-gradient(#DDF3FF,#C9EBD6);cursor:pointer;overflow:hidden;
+  font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;
+}
+.hamstage:focus-visible{outline:3px solid var(--sky-d);outline-offset:2px}
+.hamhole{position:absolute;left:50%;bottom:10px;width:70px;height:22px;margin-left:-35px;border-radius:50%;background:#7A5A3C;box-shadow:inset 0 5px 0 rgba(0,0,0,.25)}
+.hamidle{position:absolute;left:50%;top:4px;width:70px;height:70px;margin-left:-35px;transform:rotate(-14deg);pointer-events:none}
+.hamidle .hammer-svg{width:100%;height:100%;display:block}
+.hamstage.swinging .hamidle{visibility:hidden}
+.hamstage .swing-ham{left:50%;top:4px;width:70px;height:70px;margin-left:-35px}
+.hamtry{position:absolute;left:0;right:0;bottom:1px;text-align:center;font-size:.62rem;font-weight:800;color:var(--ink-soft);white-space:nowrap;pointer-events:none}
+.hamopts{flex:1 1 0;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.hamopt{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:0;min-height:68px;
+  padding:4px 2px;border:3px solid transparent;border-radius:14px;background:rgba(255,255,255,.55);
+  font:inherit;font-size:.74rem;font-weight:800;color:inherit;cursor:pointer;
+}
+.hamopt .hammer-svg{width:40px;height:40px;display:block;flex:none}
+.hamopt span{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.hamopt.on{border-color:var(--grape-d);background:#fff}
+.hamopt:focus-visible{outline:3px solid var(--sky-d);outline-offset:2px}
+.hamset .ham-shine{animation:hamShine 2.6s ease-in-out infinite}
+@media (max-width:420px){
+  .hamstage{flex:1 1 100%}
+  .hamopts{flex:1 1 100%}
+}
+
+/* 結算與戰績標題前的小槌子（圖由 app.js 依目前款式寫進 --ham-deco） */
+#ov-result-title::before,#s-stats .panel-head h2::before{
+  content:"";display:inline-block;width:1.3em;height:1.3em;vertical-align:-.28em;margin-right:.25em;
+  background:var(--ham-deco,none) center/contain no-repeat;
+}
+
+/* 結算按鈕：文字不准斷行，窄的時候縮字級而不是換行 */
+.ovcard.wide .ovbtns .btn3d{white-space:nowrap;min-width:0;padding-left:8px;padding-right:8px}
+@media (max-width:420px){.ovcard.wide .ovbtns .btn3d{font-size:.86rem}}

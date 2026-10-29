@@ -312,6 +312,32 @@
     }
   }
 
+  /**
+   * 揮槌動畫：在被敲的洞口上方揮下一支槌子。畫在特效層（.fx）而不是洞裡，
+   * 因為洞有 overflow:hidden。觸控裝置也看得到。減少動態時略過。
+   */
+  function swing(idx, style) {
+    if (reduceMotion || !fx || !holes[idx]) return;
+    var r = holes[idx].el.getBoundingClientRect();
+    var f = fx.getBoundingClientRect();
+    if (!r.width) return;
+    var size = Math.max(40, Math.min(r.width * 0.95, 120));
+    var stale = fx.querySelectorAll('.swing-ham[data-hole="' + idx + '"]');
+    for (var i = 0; i < stale.length; i++) stale[i].parentNode.removeChild(stale[i]);
+    var n = document.createElement('span');
+    n.className = 'swing-ham';
+    n.dataset.hole = String(idx);
+    n.innerHTML = w.SvgUI.hammer(style);
+    var cx = r.left - f.left + r.width / 2;
+    cx = Math.max(size / 2, Math.min(f.width - size / 2, cx));
+    n.style.width = size + 'px';
+    n.style.height = size + 'px';
+    n.style.left = (cx - size / 2) + 'px';
+    n.style.top = (r.top - f.top + r.height * 0.12) + 'px';
+    fx.appendChild(n);
+    setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); }, 460);
+  }
+
   /** 畫面上方的階段橫幅：滑下來停一下再收回去（同時只留一條） */
   function banner(text, cls, ms) {
     if (!fx) return;
@@ -383,6 +409,7 @@
     popEvent: popEvent,
     shout: shout,
     banner: banner,
+    swing: swing,
     setOptions: setOptions,
     holeCount: function () { return holes.length; }
   };

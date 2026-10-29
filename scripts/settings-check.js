@@ -94,6 +94,25 @@ async function main() {
       '真正對局沒有使用房間的 6×6 盤面', JSON.stringify(match));
     assert(errors.length === 0, '設定傳遞流程產生瀏覽器錯誤', errors.join(' | '));
 
+    /* 槌子外觀：預設經典，切到軟槌會存起來、游標圖換掉、預覽台換圖，重設回經典 */
+    await page.click('#b-settings');
+    const hamDef = await page.$eval('.hamopt.on', (e) => e.dataset.ham);
+    assert(hamDef === 'classic', '槌子外觀預設不是經典木槌', hamDef);
+    const curBefore = await page.evaluate(() => document.documentElement.style.getPropertyValue('--cur-hammer'));
+    await page.click('.hamopt[data-ham="soft"]');
+    const hamNow = await page.evaluate(() => ({
+      saved: localStorage.getItem('wam_hammer_style'),
+      cur: document.documentElement.style.getPropertyValue('--cur-hammer'),
+      on: document.querySelector('.hamopt.on').dataset.ham,
+      deco: document.documentElement.style.getPropertyValue('--ham-deco').length > 20
+    }));
+    assert(hamNow.saved === 'soft' && hamNow.on === 'soft' && hamNow.deco, '切換槌子外觀沒有生效', JSON.stringify(hamNow));
+    assert(hamNow.cur && hamNow.cur !== curBefore, '切換槌子外觀後游標圖沒有更新');
+    await page.click('#ham-stage');
+    assert(await page.$('#ham-stage .swing-ham'), '預覽台點一下沒有揮槌');
+    await page.click("#b-settings-reset");
+    assert(await page.evaluate(() => localStorage.getItem("wam_hammer_style")) === "classic", "恢復預設沒有把槌子換回經典");
+    await page.click("#settings-modal .modal-foot .btn3d:last-child");
     console.log('✓ 單機設定建立房間時正確帶入 90 秒／困難／6×6');
   } finally {
     if (browser) await browser.close();
@@ -102,6 +121,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('✗ ' + err.message);
+  console.error('✗ ' + err.message, (err.stack||'').split('\n').filter(l=>l.includes('settings-check')).join(' '));
   process.exitCode = 1;
 });
