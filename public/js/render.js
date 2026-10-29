@@ -197,13 +197,13 @@
         else {
           var dip = Math.sin(Math.PI * (rp - 0.6) / 0.4);
           up = 1 - 0.07 * dip;
-          sy = 1 - 0.05 * dip; sx = 1 + 0.04 * dip;
+          sy = 1 - 0.05 * dip; sx = 1;
         }
       } else if (left < Rules.SINK_MS) {
         var sp = Math.max(0, left) / Rules.SINK_MS;
         up = ease(sp);
         var squat = Math.sin(Math.PI * (1 - sp));
-        sy = 1 - 0.1 * squat; sx = 1 + 0.05 * squat;
+        sy = 1 - 0.1 * squat; sx = 1;
       }
       if (reduceMotion) { up = left > 0 ? 1 : 0; sy = 1; sx = 1; }
 
