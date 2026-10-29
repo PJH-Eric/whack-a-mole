@@ -321,7 +321,7 @@
     var r = holes[idx].el.getBoundingClientRect();
     var f = fx.getBoundingClientRect();
     if (!r.width) return;
-    var size = Math.max(40, Math.min(r.width * 0.95, 120));
+    var size = Math.max(32, Math.min(r.width * 0.62, 84));
     var stale = fx.querySelectorAll('.swing-ham[data-hole="' + idx + '"]');
     for (var i = 0; i < stale.length; i++) stale[i].parentNode.removeChild(stale[i]);
     var n = document.createElement('span');

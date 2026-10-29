@@ -358,9 +358,9 @@ body{
   font-size:clamp(.6rem,1.7vmin,.95rem);font-weight:900;
   border:2.5px solid var(--ink);border-radius:999px;padding:1px 7px;
   background:var(--mint);line-height:1.3;white-space:nowrap;
-  opacity:0;transform:scale(.7);transition:transform .12s;
+  opacity:0;transition:none;
 }
-.mole-badge.on{opacity:1;transform:scale(1)}
+.mole-badge.on{opacity:1}
 /* 好人的標記用紅色底＋「−」，壞人用綠色底＋「+」：不只靠顏色分辨 */
 .mole-badge.side-good{background:var(--rose);color:#8A1F2C}
 .mole-badge.side-bad{background:var(--mint);color:#1F5A44}
