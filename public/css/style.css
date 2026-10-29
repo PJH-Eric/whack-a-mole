@@ -395,7 +395,7 @@ body{
 }
 .flyscore.bad{color:var(--danger)}
 .flyscore.miss{color:var(--ink-soft);font-size:clamp(.8rem,2vmin,1.05rem)}
-@keyframes fly{0%{opacity:0;transform:translate(-50%,-20%) scale(.7)}20%{opacity:1;transform:translate(-50%,-60%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-160%) scale(1)}}
+@keyframes fly{0%{opacity:0;transform:translate(-50%,-20%)}20%{opacity:1;transform:translate(-50%,-60%)}100%{opacity:0;transform:translate(-50%,-160%)}}
 .shout{
   position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
   font-size:clamp(1.6rem,7vmin,3.4rem);font-weight:900;color:var(--ink);
@@ -654,7 +654,7 @@ html[lang="en"] .home-title, html[lang="en"] h1 { overflow-wrap: anywhere; }
 .hit-stars{position:absolute;left:50%;top:1%;width:64%;z-index:6;pointer-events:none;
   transform:translateX(-50%);animation:starsin .75s ease-out forwards}
 .hit-stars .stars-svg{display:block;width:100%;height:auto;animation:starwig .36s ease-in-out 2}
-@keyframes starsin{0%{opacity:0;transform:translate(-50%,30%) scale(.5)}20%{opacity:1;transform:translate(-50%,0) scale(1)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-18%) scale(1)}}
+@keyframes starsin{0%{opacity:0;transform:translate(-50%,30%)}20%{opacity:1;transform:translate(-50%,0)}78%{opacity:1}100%{opacity:0;transform:translate(-50%,-18%)}}
 @keyframes starwig{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
 .mole-slot.ghost{transition:none;will-change:auto;pointer-events:none}
 .ghost-in{width:100%;height:100%;transform-origin:50% 100%;animation:ghostsquash .6s ease-in forwards}
@@ -974,11 +974,10 @@ body.reduce-motion .confetti{display:none}
 .swing-ham .hammer-svg{width:100%;height:100%;display:block;overflow:visible;filter:drop-shadow(0 3px 2px rgba(60,40,90,.28))}
 .swing-ham .ham-shine{animation:hamShine .34s .1s ease-out 1 both}
 @keyframes hamSwing{
-  0%{transform:rotate(-58deg) translateY(-8%);opacity:0}
-  14%{opacity:1}
-  42%{transform:rotate(16deg) translateY(10%);opacity:1}
-  56%{transform:rotate(9deg) translateY(7%);opacity:1}
-  100%{transform:rotate(-18deg) translateY(-3%);opacity:0}
+  0%{transform:rotate(-50deg);opacity:1}
+  42%{transform:rotate(16deg);opacity:1}
+  58%{transform:rotate(9deg);opacity:1}
+  100%{transform:rotate(-14deg);opacity:0}
 }
 @keyframes hamShine{from{transform:translateX(0)}to{transform:translateX(110px)}}
 body.reduce-motion .swing-ham{display:none}
