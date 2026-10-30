@@ -52,17 +52,21 @@
   <section class="screen flexcenter active" id="s-home" aria-label="主選單" data-i18n-attr="aria-label=home.aria">
     <a class="lobby-home-link" href="https://pjh-eric.github.io/game-lobby/" aria-label="回遊戲大廳" data-i18n-attr="aria-label=nav.lobbyAria" data-i18n="nav.lobby">← 回遊戲大廳</a>
     <div class="home-wrap">
-      <div class="logo" id="logo"></div>
-      <h1 class="sr-only" data-i18n="meta.title">打地鼠大亂鬥</h1>
-      <div class="home-btns">
-        <button class="btn3d big" data-color="mint" id="b-solo"><span class="ico">🔨</span><span data-i18n="home.solo">單機練習（打電腦）</span></button>
-        <button class="btn3d big" data-color="grape" id="b-online"><span class="ico">🌐</span><span data-i18n="home.online">線上對戰（最多 5 人）</span></button>
-        <div class="home-row">
-          <button class="btn3d" data-color="sky" id="b-help"><span class="ico">📖</span><span data-i18n="home.help">地鼠圖鑑</span></button>
-          <button class="btn3d" data-color="lemon" id="b-stats"><span class="ico">🏅</span><span data-i18n="home.stats">我的戰績</span></button>
-        </div>
+      <div class="home-art" aria-hidden="true">
+        <img src="assets/images/cover.webp" width="1200" height="675" alt="" fetchpriority="high" decoding="async">
       </div>
-      <p class="home-note" data-i18n-html="home.note">壞地鼠敲下去加分，好人敲下去扣分。預設 60 秒一局，也可以選 60／75／90 秒，分三階段愈來愈快。線上模式全部人共用同一組地洞，同一隻地鼠<b>誰先敲到誰得分</b>。</p>
+      <div class="home-content">
+        <h1 class="home-title" data-i18n="home.title">打地鼠大亂鬥</h1>
+        <div class="home-btns">
+          <button class="btn3d big" data-color="mint" id="b-solo"><span class="ico">🔨</span><span data-i18n="home.solo">單機練習（打電腦）</span></button>
+          <button class="btn3d big" data-color="grape" id="b-online"><span class="ico">🌐</span><span data-i18n="home.online">線上對戰（最多 5 人）</span></button>
+          <div class="home-row">
+            <button class="btn3d" data-color="sky" id="b-help"><span class="ico">📖</span><span data-i18n="home.help">地鼠圖鑑</span></button>
+            <button class="btn3d" data-color="lemon" id="b-stats"><span class="ico">🏅</span><span data-i18n="home.stats">我的戰績</span></button>
+          </div>
+        </div>
+        <p class="home-note" data-i18n-html="home.note">壞地鼠敲下去加分，好人敲下去扣分。預設 60 秒一局，也可以選 60／75／90 秒，分三階段愈來愈快。線上模式全部人共用同一組地洞，同一隻地鼠<b>誰先敲到誰得分</b>。</p>
+      </div>
     </div>
   </section>
 

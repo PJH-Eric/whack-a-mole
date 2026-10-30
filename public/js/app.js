@@ -1541,7 +1541,6 @@
     });
 
     SvgUI.bgDeco($('bgdeco'));
-    $('logo').innerHTML = SvgUI.logo();
     buildDex();
     SvgUI.decorateAll();
     applyDisplayPrefs();

@@ -139,7 +139,22 @@ body{
 .pickcard:focus-visible{outline:3px solid var(--sky-d);outline-offset:2px}
 
 /* ---------- 首頁 ---------- */
-.home-wrap{width:min(100%,560px);padding:24px 20px calc(24px + var(--safe-b));text-align:center}
+#s-home{background:radial-gradient(ellipse at top left,#ffe49a 0%,#fff7e9 52%,#e8f3d9 100%)}
+#s-home.flexcenter.active{align-items:safe center}
+.home-wrap{width:min(100%,1180px);padding:88px 28px calc(36px + var(--safe-b));display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);align-items:center;gap:36px;text-align:center}
+.home-art{min-width:0;overflow:hidden;border:5px solid #fff8e9;border-radius:32px;box-shadow:0 12px 0 #d9b570,0 20px 40px #79532824;transform:rotate(-2deg)}
+.home-art img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
+.home-content{min-width:0}
+.home-title{margin:0 0 20px;font-size:clamp(1.8rem,3.4vw,2.65rem);line-height:1.25;color:#573c31;text-wrap:balance}
+@media(max-width:760px){
+  .home-wrap{width:min(100%,560px);grid-template-columns:1fr;gap:24px;padding:84px 22px calc(28px + var(--safe-b))}
+  .home-art{border-radius:24px;transform:none}
+  .home-title{margin-bottom:12px;font-size:1.85rem}
+}
+@media(max-height:500px) and (min-width:601px){
+  .home-wrap{gap:24px;padding-top:76px;padding-bottom:24px}
+  .home-title{font-size:1.6rem;margin-bottom:8px}
+}
 .logo{margin:0 auto 6px;max-width:340px}
 .logo-svg{width:100%;height:auto;display:block}
 .home-btns{display:flex;flex-direction:column;gap:12px;margin-top:14px}
