@@ -29,6 +29,7 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"打地鼠大亂鬥","url":"https://pjh-eric.github.io/whack-a-mole/","description":"免費線上打地鼠，辨認壞人搶分，小心打到好人會扣分！單機挑戰不同電腦難度，或邀最多五人共用地洞搶打，支援觀戰與聊天室，免下載，手機平板點一下就能玩。","applicationCategory":"GameApplication","operatingSystem":"Any","inLanguage":"zh-Hant","genre":"反應","offers":{"@type":"Offer","price":"0","priceCurrency":"TWD"},"image":"https://pjh-eric.github.io/whack-a-mole/assets/images/seo.webp","thumbnailUrl":"https://pjh-eric.github.io/whack-a-mole/assets/images/seo.webp","isPartOf":{"@type":"WebSite","url":"https://pjh-eric.github.io/game-lobby/"}}</script>
 <!--SEO:END-->
 <link rel="stylesheet" href="css/style.css?v=20261016i18n">
+<link rel="stylesheet" href="css/lobby-chat.css?v=20261112">
 <link rel="stylesheet" href="css/latency.css?v=20261002c">
 
 <link rel="icon" type="image/png" sizes="96x96" href="favicon-96.png">
@@ -385,6 +386,10 @@
           <button type="button" class="hamstage" id="ham-stage" data-i18n-attr="aria-label=hammer.try" aria-label="點一下試揮"><span class="hamhole"></span><span class="hamidle" id="ham-idle"></span><span class="hamtry" data-i18n="hammer.try">點一下試揮</span></button>
           <div class="hamopts" id="ham-opts" role="radiogroup" aria-label="槌子外觀" data-i18n-attr="aria-label=settings.hammerStyle"></div>
         </div>
+        <div class="setrow">
+          <label for="set-lobbychat"><span id="set-lobbychat-label">大廳聊天室</span><small id="set-lobbychat-sub">在線上大廳左下角顯示聊天氣泡</small></label>
+          <input type="checkbox" id="set-lobbychat" class="switch" checked>
+        </div>
         <div class="setrow"><span class="setlbl" data-i18n="settings.lang">語言</span><span id="set-lang-slot"></span></div>
         <p class="setinfo" id="set-audio-note"></p>
       </div>
@@ -478,6 +483,7 @@
 <script src="js/svgui.js?v=20261016i18n"></script>
 <script src="js/render.js?v=20261016i18n"></script>
 <script src="js/latency.js?v=20261002c" data-skin="whack-a-mole"></script>
+<script src="js/lobby-chat.js?v=20261112"></script>
 <script src="js/online.js?v=20261016i18n"></script>
 <script src="js/localize.js"></script>
 <script src="js/app.js?v=20261016i18n"></script>

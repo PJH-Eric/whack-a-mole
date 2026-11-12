@@ -1037,3 +1037,12 @@ body.reduce-motion .swing-ham{display:none}
 /* 結算按鈕：文字不准斷行，窄的時候縮字級而不是換行 */
 .ovcard.wide .ovbtns .btn3d{white-space:nowrap;min-width:0;padding-left:8px;padding-right:8px}
 @media (max-width:420px){.ovcard.wide .ovbtns .btn3d{font-size:.86rem}}
+
+/* ---------- 大廳聊天室：套用打地鼠配色 ---------- */
+body .lc-root{
+  --lc-accent:var(--grape-d);--lc-accent-ink:#fff;
+  --lc-panel-bg:var(--paper);--lc-panel-solid:var(--paper);
+  --lc-ink:var(--ink);--lc-muted:var(--ink-soft);--lc-line:var(--line);
+  --lc-field-bg:#fff;--lc-sys-bg:rgba(201,182,245,.28);--lc-name:#7B5FC9;
+  --lc-radius:var(--radius);--lc-z:85;
+}

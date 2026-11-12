@@ -113,7 +113,8 @@
           : { key: 'net.connectErrorUnknown' });
       });
 
-      ['lobby:rooms', 'room:sync', 'room:events', 'room:chat', 'room:error', 'room:closed', 'room:left']
+      ['lobby:rooms', 'room:sync', 'room:events', 'room:chat', 'room:error', 'room:closed', 'room:left',
+        'lobbychat:history', 'lobbychat:msg', 'lobbychat:online', 'lobbychat:error']
         .forEach(function (evt) {
           socket.on(evt, function (payload) { emitLocal(evt, payload); });
         });
