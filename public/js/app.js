@@ -464,15 +464,16 @@
     refreshAll();
   }
 
-  function leaveGame() {
+  function leaveGame(backToLobby) {
     S.paused = false;
     $('ov-pause').hidden = true;
     document.body.classList.remove('playing');
     stopLoop();
-    if (S.mode === 'online' && S.view) Online.send('room:leave', {});
+    if (S.mode === 'online' && S.view && !backToLobby) Online.send('room:leave', {});
     S.mode = null; S.solo.state = null; S.match = null; S.view = null;
     Board.clear();
-    show('s-home');
+    show(backToLobby ? 's-lobby' : 's-home');
+    if (backToLobby) Online.send('lobby:subscribe', {});
   }
 
   function startLoop() {
@@ -1537,11 +1538,19 @@
       paintChat(S.view.chat);
     });
     Online.on('room:error', function (p) { toast(w.I18N.message(p.key ? p : p.message) || (globalThis.I18N ? globalThis.I18N.t("text.005") : "操作失敗")); });
-    Online.on('room:closed', function (p) { toast(w.I18N.message(p.key ? p : p.reason) || (globalThis.I18N ? globalThis.I18N.t("text.004") : "房間已關閉")); leaveGame(); });
+    Online.on('room:closed', function (p) {
+      if (S.mode !== 'online') return;
+      toast(w.I18N.message(p.key ? p : p.reason) || (globalThis.I18N ? globalThis.I18N.t("text.004") : "房間已關閉"));
+      leaveGame(true);
+    });
     Online.on('room:left', function () { Sound.play('leave'); });
     Online.on('reconnected', function () {
       if (S.mode === 'online' && S.view) {
-        Online.send('room:join', { code: S.view.code, name: S.name });
+        Online.send('room:join', { code: S.view.code, name: S.name }, function (res) {
+          if (res && !res.ok && S.mode === 'online') leaveGame(true);
+        });
+      } else if (S.screen === 's-lobby') {
+        Online.send('lobby:subscribe', {});
       }
     });
   }

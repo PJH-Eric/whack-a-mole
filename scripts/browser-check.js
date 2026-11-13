@@ -223,7 +223,11 @@ async function main() {
     group(vp.label);
     const { ctx, page } = await newPage(vp);
     await page.goto(BASE, { waitUntil: 'networkidle' });
-    await page.waitForSelector('#logo svg');
+    await page.waitForSelector('#s-home .home-art img');
+    await page.waitForFunction(() => {
+      const cover = document.querySelector('#s-home .home-art img');
+      return cover.complete && cover.naturalWidth > 0;
+    });
 
     for (const sc of SCREENS) {
       if (sc.go) { await page.click(sc.go); await sleep(260); }
@@ -676,6 +680,8 @@ async function main() {
       await page.goto(BASE, { waitUntil: 'networkidle' });
       await page.click('#b-online');
       await sleep(300);
+      const lobbyChatClose = page.locator('.lc-root.lc-open .lc-min');
+      if (await lobbyChatClose.isVisible()) await lobbyChatClose.click();
       await page.fill('#lobby-nick', name);
       await page.dispatchEvent('#lobby-nick', 'change');
       return { ctx, page };
@@ -707,6 +713,8 @@ async function main() {
 
     await C.page.goto(inviteUrl, { waitUntil: 'networkidle' });
     await C.page.waitForSelector('#s-lobby.active', { timeout: 5000 });
+    const spectatorChatClose = C.page.locator('.lc-root.lc-open .lc-min');
+    if (await spectatorChatClose.isVisible()) await spectatorChatClose.click();
     await C.page.fill('#lobby-nick', '觀眾小美');
     await C.page.click('#b-join');
     await C.page.waitForSelector('#ov-wait:not([hidden])', { timeout: 10000 });

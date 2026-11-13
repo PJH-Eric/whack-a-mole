@@ -100,6 +100,8 @@ async function main() {
     await host.page.goto(BASE, { waitUntil: 'networkidle' });
     await host.page.click('#b-online');
     await host.page.waitForSelector('#conn-dot.ok', { timeout: 10000 });
+    const hostChatClose = host.page.locator('.lc-root.lc-open .lc-min');
+    if (await hostChatClose.isVisible()) await hostChatClose.click();
     await host.page.fill('#lobby-nick', '房主');
     await host.page.dispatchEvent('#lobby-nick', 'change');
     await host.page.click('#b-create');
@@ -108,6 +110,8 @@ async function main() {
 
     await guest.page.goto(BASE, { waitUntil: 'networkidle' });
     await guest.page.click('#b-online');
+    const guestChatClose = guest.page.locator('.lc-root.lc-open .lc-min');
+    if (await guestChatClose.isVisible()) await guestChatClose.click();
     await guest.page.waitForSelector('#conn-dot.ok', { timeout: 10000 });
     await guest.page.fill('#lobby-nick', '對手');
     await guest.page.dispatchEvent('#lobby-nick', 'change');

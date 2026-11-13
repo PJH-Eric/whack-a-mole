@@ -54,6 +54,9 @@ async function main() {
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await page.click('#b-online');
+    await page.waitForSelector('#conn-dot.ok');
+    const lobbyChatClose = page.locator('.lc-root.lc-open .lc-min');
+    if (await lobbyChatClose.isVisible()) await lobbyChatClose.click();
     await page.fill('#lobby-nick', '離開測試');
     await page.dispatchEvent('#lobby-nick', 'change');
     await page.click('#b-create');

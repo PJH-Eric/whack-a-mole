@@ -99,10 +99,10 @@
       });
       if (w.NetworkLatency) w.NetworkLatency.bindSocketIo(socket);
 
+      var firstConnect = true;
       socket.on('connect', function () {
-        setStatus('connected');
+        if (firstConnect) { firstConnect = false; return; }
         sayHello(identity);
-        emitLocal('reconnected', {});
       });
       socket.on('disconnect', function (reason) {
         setStatus('connecting', { key: 'net.dropped', params: { reason: reason } });
@@ -121,17 +121,25 @@
 
       return waitHello(identity);
     }).catch(function (err) {
-      setStatus('error', err.key ? { key: err.key, params: err.params } : { key: 'net.connectError', params: { reason: err.message || String(err) } });
+      if (generation === connectionGeneration) setStatus('error', err.key ? { key: err.key, params: err.params } : { key: 'net.connectError', params: { reason: err.message || String(err) } });
       throw err;
     });
   }
 
   function sayHello(identity) {
     if (!socket) return;
-    socket.emit('hello', { clientId: identity.clientId, name: identity.name });
+    var target = socket;
+    target.emit('hello', { clientId: identity.clientId, name: identity.name }, function (res) {
+      if (socket !== target || !target.connected || !res || !res.ok) return;
+      setStatus('connected');
+      emitLocal('hello', res);
+      emitLocal('reconnected', {});
+    });
   }
 
   function waitHello(identity) {
+    var target = socket;
+    var generation = connectionGeneration;
     return new Promise(function (resolve, reject) {
       var done = false;
       var timer = setTimeout(function () {
@@ -141,20 +149,22 @@
       }, 15000);
       var finish = function () {
         if (done) return;
-        socket.emit('hello', { clientId: identity.clientId, name: identity.name }, function (res) {
+        if (generation !== connectionGeneration) return;
+        target.emit('hello', { clientId: identity.clientId, name: identity.name }, function (res) {
           if (done) return;
           done = true;
           clearTimeout(timer);
+          if (generation !== connectionGeneration) { reject(new Error('Connection cancelled')); return; }
           if (res && res.ok) {
             setStatus('connected');
             emitLocal('hello', res);        /* 帶 serverTime，app.js 用來校時 */
-            resolve(socket);
+            resolve(target);
           }
           else reject(keyedError('net.refused'));
         });
       };
-      if (socket.connected) finish();
-      else socket.once('connect', finish);
+      if (target.connected) finish();
+      else target.once('connect', finish);
     });
   }
 
@@ -176,7 +186,7 @@
 
   function disconnect() {
     connectionGeneration++;
-    if (socket) { socket.disconnect(); }
+    if (socket) { socket.removeAllListeners(); socket.disconnect(); socket = null; }
     setStatus('idle');
   }
 
