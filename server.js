@@ -118,10 +118,29 @@ function socketsOf(code) {
 }
 
 function attach(socket, code) {
-  detach(socket);
+  if (socket.data.roomCode !== code) leaveCurrentRoom(socket);
   socket.data.roomCode = code;
   socketsOf(code).add(socket);
   lobbySockets.delete(socket);
+}
+
+/** 同一身分的最後一條房內連線離開後才釋放座位。 */
+function leaveCurrentRoom(socket) {
+  const room = store.get(socket.data.roomCode);
+  detach(socket);
+  if (!room || hasRoomConnection(room.code, socket.data.clientId)) return;
+  const res = room.leave(socket.data.clientId, now());
+  if (res.ok && res.emptied) {
+    closeRoom(room, 'err.roomEmpty');
+  } else if (res.ok) {
+    room.system('sys.left', { name: res.name }, now());
+    syncRoom(room);
+  }
+}
+
+function hasRoomConnection(code, clientId) {
+  return [...(roomSockets.get(code) || [])]
+    .some(s => s.connected && s.data.clientId === clientId);
 }
 
 function detach(socket) {
@@ -146,7 +165,8 @@ function syncRoom(room) {
 
 function syncLobby() {
   if (!lobbySockets.size) return;
-  const payload = { rooms: store.list(), total: store.size(), online: io.engine.clientsCount };
+  const online = new Set([...io.sockets.sockets.values()].map(s => s.data.clientId).filter(Boolean)).size;
+  const payload = { rooms: store.list(), total: store.size(), online };
   for (const s of lobbySockets) s.emit('lobby:rooms', payload);
 }
 
@@ -175,25 +195,25 @@ io.on('connection', (socket) => {
   socket.data.clientId = null;
   socket.data.name = 'Player';
   socket.data.roomCode = null;
-  syncLobby();
 
   socket.on('latency:ping', (_sentAt, ack) => { if (typeof ack === 'function') ack(); });
 
   socket.on('hello', (payload, ack) => {
     const p = payload || {};
-    let id = String(p.clientId || '').trim();
+    let id = socket.data.clientId || String(p.clientId || '').trim();
     if (!/^[A-Za-z0-9_-]{8,64}$/.test(id)) id = crypto.randomBytes(12).toString('hex');
     socket.data.clientId = id;
     socket.data.name = sanitizeName(p.name, 'Player');
     if (typeof ack === 'function') {
       ack({ ok: true, clientId: id, name: socket.data.name, serverTime: now(), roundMs: ROUND_MS });
     }
+    syncLobby();
   });
 
   socket.on('lobby:subscribe', () => {
-    detach(socket);
+    leaveCurrentRoom(socket);
     lobbySockets.add(socket);
-    socket.emit('lobby:rooms', { rooms: store.list(), total: store.size(), online: io.engine.clientsCount });
+    syncLobby();
   });
 
   socket.on('lobby:unsubscribe', () => { lobbySockets.delete(socket); });
@@ -296,6 +316,11 @@ io.on('connection', (socket) => {
   socket.on('room:stand', withRoom((room) => {
     const res = room.becomeSpectator(socket.data.clientId);
     if (!res.ok) return failRes(socket, res);
+    if (room.players().length === 0) {
+      closeRoom(room, 'err.roomEmpty');
+      syncLobby();
+      return;
+    }
     room.system('sys.stood', { name: res.member.name }, now());
     syncRoom(room); syncLobby();
   }));
@@ -399,22 +424,17 @@ io.on('connection', (socket) => {
     syncRoom(room);
   }));
 
-  socket.on('room:leave', withRoom((room) => {
-    const res = room.leave(socket.data.clientId, now());
-    detach(socket);
+  socket.on('room:leave', () => {
+    leaveCurrentRoom(socket);
     socket.emit('room:left', { ok: true });
-    /* 最後一個人走了就立刻關房，不留空房佔房號 */
-    if (res.ok && res.emptied) { closeRoom(room, 'err.roomEmpty'); syncLobby(); return; }
-    if (res.ok) room.system('sys.left', { name: res.name }, now());
-    syncRoom(room);
     syncLobby();
-  }));
+  });
 
   socket.on('disconnect', () => {
     lobbySockets.delete(socket);
     const room = store.get(socket.data.roomCode);
     detach(socket);
-    if (!room) { syncLobby(); return; }
+    if (!room || hasRoomConnection(room.code, socket.data.clientId)) { syncLobby(); return; }
     const member = room.member(socket.data.clientId);
     if (!member) return;
     /* 先標記為斷線並保留座位，讓重新整理的人可以憑 clientId 回到原位 */
@@ -473,6 +493,7 @@ function closeRoom(room, key, alreadyRemoved) {
   for (const s of socketsOf(room.code)) {
     s.emit('room:closed', { key: key });
     s.data.roomCode = null;
+    lobbySockets.add(s);
   }
   roomSockets.delete(room.code);
   lastSyncAt.delete(room.code);
