@@ -1149,7 +1149,8 @@
       maxUses: Number($('inv-uses').value)
     }, function (res) {
       if (!res || !res.ok) return toast((res && (res.key ? w.I18N.message(res) : w.I18N.message(res.error))) || (globalThis.I18N ? globalThis.I18N.t("text.030") : "產生失敗"));
-      var url = Config.inviteUrl(S.view.code, res.token);
+      var address = Config.inviteUrl(S.view.code, res.token);
+      var url = window.GameBackend?.pinInvite(address) ?? address;
       $('invite-url').value = url;
       $('invite-out').hidden = false;
       copyText(url, (globalThis.I18N ? globalThis.I18N.t("text.029") : "邀請連結已經複製，貼給朋友就可以了。"));
@@ -1300,7 +1301,11 @@
     if (t.dataset.setpace) { Sound.play('tick'); Online.send('room:setPace', { pace: t.dataset.setpace }); return; }
     if (t.dataset.setround) { Sound.play('tick'); Online.send('room:setRound', { roundSec: Number(t.dataset.setround) }); return; }
     if (t.dataset.revoke) { Online.send('room:revokeInvite', { token: t.dataset.revoke }); return; }
-    if (t.dataset.copyinv) { copyText(Config.inviteUrl(S.view.code, t.dataset.copyinv)); return; }
+    if (t.dataset.copyinv) {
+      var address = Config.inviteUrl(S.view.code, t.dataset.copyinv);
+      copyText(window.GameBackend?.pinInvite(address) ?? address);
+      return;
+    }
     if (t.hasAttribute('data-close-modal')) { closeModal(t.closest('.modal').id); }
   });
 
