@@ -116,10 +116,7 @@
       var tr = function (k) { return w.I18N ? w.I18N.t(k) : k; };
       if (Config.status === 'invalid') return tr('cfg.invalid');
       if (!Config.serverUrl) return tr('cfg.unset');
-      var host = Config.serverUrl.replace(/^https?:\/\//, '');
-      var tag = Config.source === 'query' ? tr('cfg.srcQuery')
-        : (Config.source === 'injected' ? tr('cfg.srcInjected') : tr('cfg.srcSame'));
-      return host + tag;
+      return '';
     },
 
     /* 測試用：不依賴瀏覽器環境也能驗證解析規則 */

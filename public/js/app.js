@@ -927,7 +927,7 @@
     var map = {
       idle: ['', (globalThis.I18N ? globalThis.I18N.t("text.059") : "尚未連線")], loading: ['warn', (globalThis.I18N ? globalThis.I18N.t("text.058") : "正在載入連線程式…")],
       connecting: ['warn', (globalThis.I18N ? globalThis.I18N.t("text.057") : "連線中…（免費方案冷啟動可能要十幾秒）")],
-      connected: ['ok', (globalThis.I18N ? globalThis.I18N.t("text.056") : "已連上 ") + Config.describe()],
+      connected: ['ok', (globalThis.I18N ? globalThis.I18N.t("text.056") : "已連上伺服器")],
       error: ['bad', (st.key ? w.I18N.message(st) : st.message) || (globalThis.I18N ? globalThis.I18N.t("text.055") : "連線失敗")],
       offline: ['bad', (st.key ? w.I18N.message(st) : st.message) || (globalThis.I18N ? globalThis.I18N.t("text.054") : "沒有可用的伺服器，只能玩單機")]
     };

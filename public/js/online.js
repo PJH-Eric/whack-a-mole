@@ -65,7 +65,7 @@
       s.onerror = function () {
         loading = null;
         s.remove();
-        reject(keyedError('net.cannotReach', { where: Config.describe() }));
+        reject(keyedError('net.cannotReach'));
       };
       document.head.appendChild(s);
     });
